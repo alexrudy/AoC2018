@@ -21,6 +21,8 @@ struct Args {
     arg_day: usize,
 }
 
+type Result = ::std::result::Result<(), Box<::std::error::Error>>;
+
 pub fn input(day: usize) -> std::io::Result<Box<::std::io::BufRead>> {
     let mut p = ::std::path::PathBuf::from("puzzles");
     p.push(format!("{}", day));
@@ -31,18 +33,19 @@ pub fn input(day: usize) -> std::io::Result<Box<::std::io::BufRead>> {
     Ok(Box::new(BufReader::new(f)))
 }
 
-fn main() -> Result<(), Box<::std::error::Error>> {
+fn main() -> Result {
     let args: Args = Docopt::new(USAGE)
         .and_then(|dopt| dopt.deserialize())
         .unwrap_or_else(|e| e.exit());
 
     println!("Solving AoC for Day {}", args.arg_day);
 
-    match args.arg_day {
-        1 => puzzles::day1::main(),
-        _ => {
-            eprintln!("Can't solve puzzle for day {}", args.arg_day);
-            Ok(())
-        }
+    let solvers: Vec<Box<Fn() -> Result>> = vec![Box::new(puzzles::day1::main)];
+
+    if args.arg_day < solvers.len() {
+        eprintln!("Can't solve puzzle for day {}", args.arg_day);
+        Ok(())
+    } else {
+        (solvers[args.arg_day - 1])()
     }
 }
