@@ -2,6 +2,11 @@
 extern crate serde_derive;
 extern crate docopt;
 
+#[macro_use]
+extern crate lazy_static;
+
+extern crate regex;
+
 use docopt::Docopt;
 use std::fs::File;
 use std::io::BufReader;
@@ -15,6 +20,12 @@ Usage:
     aoc2018 <day>
 
 ";
+
+macro_rules! day {
+    ($iden:ident) => {
+        Box::new(puzzles::$iden::main)
+    };
+}
 
 #[derive(Deserialize)]
 struct Args {
@@ -40,8 +51,7 @@ fn main() -> Result {
 
     println!("Solving AoC for Day {}", args.arg_day);
 
-    let solvers: Vec<Box<Fn() -> Result>> =
-        vec![Box::new(puzzles::day1::main), Box::new(puzzles::day2::main)];
+    let solvers: Vec<Box<Fn() -> Result>> = vec![day!(day1), day!(day2), day!(day3)];
 
     if args.arg_day < solvers.len() {
         eprintln!("Can't solve puzzle for day {}", args.arg_day);
