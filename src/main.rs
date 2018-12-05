@@ -51,7 +51,7 @@ fn main() -> Result {
 
     println!("Solving AoC for Day {}", args.arg_day);
 
-    let solvers: Vec<Box<Fn() -> Result>> = vec![day!(day1), day!(day2), day!(day3)];
+    let solvers: Vec<Box<Fn() -> Result>> = vec![day!(day1), day!(day2), day!(day3), day!(day4)];
 
     if args.arg_day < solvers.len() {
         eprintln!("Can't solve puzzle for day {}", args.arg_day);
