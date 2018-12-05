@@ -117,6 +117,17 @@ impl Door {
         Ok(self.shift.take())
     }
 
+    fn process_state(&mut self, result: SleepState) -> Result<()> {
+        let (state, sleep) = result;
+        if let Some((start, stop)) = sleep {
+            if let Some(ref mut shift) = self.shift {
+                shift.sleep(start, stop);
+            }
+        }
+        self.state = state;
+        Ok(())
+    }
+
     fn process_entry(&mut self, entry: &LogEntry) -> Result<Option<Shift>> {
         let date = shift_date(entry.timestamp);
 
@@ -128,22 +139,14 @@ impl Door {
 
         // If it is a new day, assume the guard left yesterday, and yield that state.
         let mut result = if self.shift.as_ref().map(|s| s.date != date).unwrap_or(false) {
-            self.state = {
-                let (state, sleep) = self.state.new_day()?;
-                if let Some((start, stop)) = sleep {
-                    if let Some(ref mut shift) = self.shift {
-                        shift.sleep(start, stop);
-                    }
-                }
-                state
-            };
+            self.process_state(self.state.new_day()?)?;
             self.shift.take()
         } else {
             None
         };
 
         // Process the guard state at the door.
-        self.state = {
+        {
             let (state, sleep) = match entry.entry {
                 LogEntryValue::GuardBegins(id) => {
                     // If new guard has arrived, new shift.
@@ -165,7 +168,7 @@ impl Door {
                     shift.sleep(start, stop);
                 }
             }
-            state
+            self.process_state((state, sleep))?;
         };
 
         Ok(result)
@@ -447,5 +450,13 @@ mod test {
         let shifts = generate_shifts(&entries).unwrap();
 
         assert_eq!(algorithm_part2(&shifts).unwrap(), 4455);
+    }
+
+    #[test]
+    fn answer_part2() {
+        let entries = parse_entries().unwrap();
+        let shifts = generate_shifts(&entries).unwrap();
+
+        assert_eq!(algorithm_part2(&shifts).unwrap(), 55053);
     }
 }
