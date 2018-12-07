@@ -124,6 +124,7 @@ impl Door {
         Ok(())
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::or_fun_call))]
     fn process_entry(&mut self, entry: &LogEntry) -> Result<Option<Shift>> {
         let date = shift_date(entry.timestamp);
 
