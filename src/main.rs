@@ -1,3 +1,5 @@
+#![macro_use]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate docopt;
@@ -8,8 +10,14 @@ extern crate lazy_static;
 extern crate regex;
 
 use docopt::Docopt;
+
 use std::fs::File;
 use std::io::BufReader;
+
+#[macro_export]
+macro_rules! err {
+    ($($tt:tt)*) => { Err(Box::<::std::error::Error>::from(format!($($tt)*))) }
+}
 
 mod puzzles;
 
@@ -51,7 +59,8 @@ fn main() -> Result {
 
     println!("Solving AoC for Day {}", args.arg_day);
 
-    let solvers: Vec<Box<Fn() -> Result>> = vec![day!(day1), day!(day2), day!(day3), day!(day4)];
+    let solvers: Vec<Box<Fn() -> Result>> =
+        vec![day!(day1), day!(day2), day!(day3), day!(day4), day!(day5)];
 
     if args.arg_day < solvers.len() {
         eprintln!("Can't solve puzzle for day {}", args.arg_day);

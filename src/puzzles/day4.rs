@@ -8,10 +8,6 @@ use chrono::naive::{NaiveDate, NaiveDateTime};
 use chrono::{Duration, Timelike};
 use regex::Regex;
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
-}
-
 #[derive(Clone)]
 struct Shift {
     id: u32,
