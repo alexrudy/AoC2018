@@ -19,6 +19,11 @@ macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<::std::error::Error>::from(format!($($tt)*))) }
 }
 
+#[macro_export]
+macro_rules! newerr {
+    ($($tt:tt)*) => { Box::<::std::error::Error>::from(format!($($tt)*)) }
+}
+
 mod puzzles;
 
 const USAGE: &str = "
@@ -67,6 +72,7 @@ fn main() -> Result {
         day!(day5),
         day!(day6),
         day!(day7),
+        day!(day8),
     ];
 
     if args.arg_day < solvers.len() {
