@@ -7,6 +7,11 @@ extern crate docopt;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate itertools;
+
+extern crate rayon;
+
 extern crate regex;
 
 use docopt::Docopt;
@@ -75,6 +80,7 @@ fn main() -> Result {
         day!(day8),
         day!(day9),
         day!(day10),
+        day!(day11),
     ];
 
     if args.arg_day < solvers.len() {
