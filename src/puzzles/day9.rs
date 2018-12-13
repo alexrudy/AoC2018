@@ -28,6 +28,7 @@ impl Circle {
         }
     }
 
+    #[allow(dead_code)]
     fn view(&self) -> Vec<Marble> {
         self.marbles.iter().cloned().collect()
     }
@@ -59,7 +60,7 @@ fn play(marbles: Marble, players: usize) -> HashMap<usize, Marble> {
     let mut scores = HashMap::new();
     let mut circle = Circle::new();
 
-    for (marble, player) in (1..=marbles).zip((1..(players + 1)).cycle()) {
+    for (marble, player) in (1..=marbles).zip((1..=players).cycle()) {
         if let Some((ma, mb)) = circle.add(marble) {
             *scores.entry(player).or_insert(0) += ma + mb;
         }
@@ -160,7 +161,7 @@ mod test {
     fn answer_part1() {
         let (players, marbles) = parse_input().unwrap();
 
-        assert_eq!(play(marbles, players).values().max(), Some(&398048))
+        assert_eq!(play(marbles, players).values().max(), Some(&398_048))
     }
 
     #[test]
@@ -169,7 +170,7 @@ mod test {
 
         assert_eq!(
             play(marbles * 100, players).values().max(),
-            Some(&3180373421)
+            Some(&3_180_373_421)
         )
     }
 }
