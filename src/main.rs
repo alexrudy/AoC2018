@@ -81,6 +81,7 @@ fn main() -> Result {
         day!(day9),
         day!(day10),
         day!(day11),
+        day!(day12),
     ];
 
     if args.arg_day < solvers.len() {
