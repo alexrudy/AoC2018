@@ -77,7 +77,6 @@ struct Patch {
 }
 
 struct Grid {
-    serial: Element,
     table: HashMap<Coordinate, Element>,
 }
 
@@ -95,11 +94,7 @@ impl Grid {
             table.insert(here, intensity);
         }
 
-        Self { serial, table }
-    }
-
-    fn power(&self, position: Coordinate) -> Element {
-        position.power(self.serial)
+        Self { table }
     }
 
     fn vpatch(&self, position: &Coordinate, size: Element) -> Element {
@@ -136,7 +131,7 @@ impl Grid {
                     .filter(|(x, y)| (x + s <= 300) && (y + s <= 300))
                     .map(|(x, y)| {
                         let c = Coordinate::new(x, y);
-                        (c, s, self.vpatch(&c, i64::from(s)))
+                        (c, s, self.vpatch(&c, s))
                     })
                     .max_by_key(|(_, _, p)| *p)
             })
@@ -184,7 +179,10 @@ mod test {
     }
 
     impl Grid {
-        #[cfg(test)]
+        fn power(&self, position: Coordinate) -> Element {
+            self.vpatch(&position, 1)
+        }
+
         fn view(&self, patch: &Patch) -> PatchDisplay {
             PatchDisplay {
                 grid: &self,

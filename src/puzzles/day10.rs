@@ -114,11 +114,6 @@ struct Sky {
 }
 
 impl Sky {
-    #[cfg(test)]
-    fn new() -> Self {
-        Self { lights: Vec::new() }
-    }
-
     fn advance(&mut self, time: Element) {
         for light in self.lights.iter_mut() {
             light.advance(time);
