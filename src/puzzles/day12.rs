@@ -41,7 +41,6 @@ fn evolve_until_stable(pots: Pots, notes: &[Note], maxiter: Plant) -> (Pots, Pla
         let mut seq = pots.sequence();
         for i in 1..maxiter {
             pots = pots.grow_once(&notes);
-            println!("{}", pots);
 
             if pots.sequence() == seq && i > 20 {
                 same += 1;
@@ -71,7 +70,6 @@ pub(crate) fn main() -> Result<()> {
     {
         let iterations = 50_000_000_000i64;
         let (pots, offset) = evolve_until_stable(pots, &notes, iterations);
-        println!("{}", offset);
         println!("Part 2: {}", pots.total_with_offset(iterations - offset));
     }
 
