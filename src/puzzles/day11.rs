@@ -117,14 +117,6 @@ impl Grid {
         self.vpatch(position, 3)
     }
 
-    #[cfg(test)]
-    fn view(&self, patch: &Patch) -> PatchDisplay {
-        PatchDisplay {
-            grid: &self,
-            patch: *patch,
-        }
-    }
-
     fn max_patch(&self) -> Option<(Coordinate, Element)> {
         iproduct!(1..298, 1..298)
             .map(|(x, y)| {
@@ -188,6 +180,16 @@ mod test {
                 writeln!(f, "")?;
             }
             Ok(())
+        }
+    }
+
+    impl Grid {
+        #[cfg(test)]
+        fn view(&self, patch: &Patch) -> PatchDisplay {
+            PatchDisplay {
+                grid: &self,
+                patch: *patch,
+            }
         }
     }
 

@@ -114,6 +114,7 @@ struct Sky {
 }
 
 impl Sky {
+    #[cfg(test)]
     fn new() -> Self {
         Self { lights: Vec::new() }
     }
