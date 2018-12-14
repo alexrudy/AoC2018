@@ -84,7 +84,7 @@ fn main() -> Result {
         day!(day12),
     ];
 
-    if args.arg_day < solvers.len() {
+    if args.arg_day > solvers.len() || args.arg_day < 1 {
         eprintln!("Can't solve puzzle for day {}", args.arg_day);
         Ok(())
     } else {
