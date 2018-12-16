@@ -3,7 +3,7 @@ use std::error::Error;
 type Result<T> = ::std::result::Result<T, Box<Error>>;
 
 pub(crate) fn main() -> Result<()> {
-    let recipies = evovle(306281);
+    let recipies = evovle(306_281);
     let part1: String = recipies.iter().map(|d| format!("{}", d)).collect();
     println!("Part 1: {}", part1);
 
