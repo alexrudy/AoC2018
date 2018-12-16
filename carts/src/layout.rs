@@ -154,6 +154,7 @@ impl Layout {
             .collect()
     }
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn get_track(&self, position: &Point) -> Option<&Track> {
         self.track.get(position)
     }
