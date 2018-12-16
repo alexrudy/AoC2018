@@ -17,7 +17,7 @@ macro_rules! err {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum Track {
+pub enum Track {
     Vertical,
     Horizontal,
     RightCorner,
@@ -29,7 +29,7 @@ pub(crate) enum Track {
 #[derive(Debug, PartialEq)]
 pub enum LayoutError {
     NoCarts,
-    OneCart,
+    OneCart(Point),
     OffTheRails(Point),
     Collision(Point),
 }
@@ -38,9 +38,11 @@ impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LayoutError::NoCarts => write!(f, "No carts on layout, nothing to run!"),
-            LayoutError::OneCart => {
-                write!(f, "Can't wait for collision with only one cart on layout!")
-            }
+            LayoutError::OneCart(p) => write!(
+                f,
+                "Can't wait for collision with only one cart on layout at {}!",
+                p
+            ),
             LayoutError::OffTheRails(p) => write!(f, "A cart went off the rails at {}", p),
             LayoutError::Collision(p) => write!(f, "Two carts collided at {}", p),
         }
@@ -108,21 +110,27 @@ impl fmt::Display for Track {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Layout {
     track: HashMap<Point, Track>,
     carts: BinaryHeap<Cart>,
 }
 
+impl Default for Layout {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Layout {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             track: HashMap::new(),
             carts: BinaryHeap::new(),
         }
     }
 
-    fn bbox(&self) -> BBox {
+    pub fn bbox(&self) -> BBox {
         let mut bbox = BBox::empty();
         for point in self.track.keys() {
             bbox.include(*point);
@@ -137,14 +145,22 @@ impl Layout {
         };
     }
 
-    fn cart_mapping(&self) -> HashMap<Point, Direction> {
+    pub fn cart_mapping(&self) -> HashMap<Point, Direction> {
         self.carts
             .iter()
             .map(|c| (c.position, c.direction))
             .collect()
     }
 
-    fn tick(&mut self) -> Result<(), CartError> {
+    pub fn get_track(&self, position: &Point) -> Option<&Track> {
+        self.track.get(position)
+    }
+
+    fn tick(&mut self) -> Result<(), LayoutError> {
+        if self.carts.is_empty() {
+            return Err(LayoutError::NoCarts);
+        }
+
         let mut carts = Vec::with_capacity(self.carts.len());
 
         let mut positions: HashSet<Point> = self.carts.iter().map(|c| c.position).collect();
@@ -160,13 +176,15 @@ impl Layout {
             if positions.remove(&cart.position) {
                 // Move the cart forward
                 cart.advance(track)
-                    .map_err(|e| CartError::from_advance(e, cart.position))?;
+                    .map_err(|e| LayoutError::from(CartError::from_advance(e, cart.position)))?;
 
                 // If this is a collision, remove it and set the result. Otherwise,
                 // push the cart back onto the stack.
                 if !positions.insert(cart.position) {
                     positions.remove(&cart.position);
-                    result = Err(CartError::Collision(cart.position));
+                    if result.is_ok() {
+                        result = Err(LayoutError::Collision(cart.position));
+                    }
                 } else {
                     carts.push(cart);
                 }
@@ -179,55 +197,27 @@ impl Layout {
             .filter(|c| positions.contains(&c.position))
             .collect();
 
+        if result.is_ok() && self.carts.len() == 1 {
+            return Err(LayoutError::OneCart(self.carts.peek().unwrap().position));
+        }
+
         result
     }
 
-    pub fn run_until_collision<F>(&mut self, f: F) -> Result<Point, LayoutError>
+    pub fn run<F>(&mut self, mut f: F, until: LayoutComplete) -> Result<(), LayoutError>
     where
-        F: Fn(&Self),
+        F: FnMut(&Self),
     {
-        if self.carts.is_empty() {
-            return Err(LayoutError::NoCarts);
-        }
+        for counter in 0.. {
+            let result = self.tick();
 
-        if self.carts.len() < 2 {
-            return Err(LayoutError::OneCart);
-        }
-
-        loop {
-            match self.tick() {
-                Ok(()) => f(&self),
-                Err(CartError::Collision(point)) => return Ok(point),
-                Err(e) => return Err(e.into()),
+            if until.is_complete(&result, counter) {
+                return result;
+            } else {
+                f(&self);
             }
         }
-    }
-
-    pub fn run_until_last_cart<F>(&mut self, f: F) -> Result<Point, LayoutError>
-    where
-        F: Fn(&Self),
-    {
-        if self.carts.is_empty() {
-            return Err(LayoutError::NoCarts);
-        }
-
-        if self.carts.len() < 2 {
-            return Err(LayoutError::OneCart);
-        }
-
-        loop {
-            match self.tick() {
-                Ok(()) => f(&self),
-                Err(CartError::Collision(_)) => {}
-                Err(e) => return Err(e.into()),
-            }
-            if self.carts.len() == 1 {
-                return Ok(self.carts.peek().unwrap().position);
-            }
-            if self.carts.is_empty() {
-                return Err(LayoutError::NoCarts);
-            }
-        }
+        Ok(())
     }
 
     pub fn from_file<P>(path: P) -> Result<Self, Box<Error>>
@@ -241,6 +231,30 @@ impl Layout {
             buffer
         };
         Ok(data.parse()?)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum LayoutComplete {
+    Collision,
+    LastCart,
+    Iterations(usize),
+    Never,
+}
+
+impl LayoutComplete {
+    fn is_complete(&self, tick_result: &Result<(), LayoutError>, counter: usize) -> bool {
+        match (self, tick_result) {
+            (LayoutComplete::Collision, Err(LayoutError::Collision(_))) => true,
+            (LayoutComplete::Collision, Err(LayoutError::OneCart(_))) => true,
+            (LayoutComplete::LastCart, Err(LayoutError::OneCart(_))) => true,
+            (_, Err(LayoutError::NoCarts)) => true,
+            (_, Err(LayoutError::OffTheRails(_))) => true,
+            (LayoutComplete::Iterations(i), _) => *i <= counter,
+            (_, Err(LayoutError::Collision(_))) => false,
+            (_, Ok(())) => false,
+            (LayoutComplete::Never, _) => false,
+        }
     }
 }
 
@@ -350,21 +364,21 @@ mod test {
     #[test]
     fn example_part1() {
         let mut layout = Layout::from_str(example_layout_file!("part1_example")).unwrap();
-        let collision = layout.run_until_collision(|_| {}).unwrap();
-        assert_eq!(collision, Point::new(7, 3))
+        let collision = layout.run(|_| {}, LayoutComplete::Collision).unwrap_err();
+        assert_eq!(collision, LayoutError::Collision(Point::new(7, 3)))
     }
 
     #[test]
     fn example_part2() {
         let mut layout = Layout::from_str(example_layout_file!("part2_example")).unwrap();
-        let last_cart = layout.run_until_last_cart(|_| {}).unwrap();
-        assert_eq!(last_cart, Point::new(6, 4))
+        let last_cart = layout.run(|_| {}, LayoutComplete::LastCart).unwrap_err();
+        assert_eq!(last_cart, LayoutError::OneCart(Point::new(6, 4)));
     }
 
     #[test]
     fn collision_removes_both() {
         let mut layout = Layout::from_str(example_layout_file!("test_collision")).unwrap();
-        assert_eq!(layout.tick(), Err(CartError::Collision(Point::new(3, 0))));
+        assert_eq!(layout.tick(), Err(LayoutError::Collision(Point::new(3, 0))));
 
         assert_eq!(layout.carts.len(), 1);
     }

@@ -11,7 +11,7 @@ macro_rules! err {
 type ParseResult<T> = Result<T, Box<Error>>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -104,7 +104,7 @@ impl fmt::Display for Point {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct BBox {
+pub struct BBox {
     left: Position,
     right: Position,
     top: Position,
@@ -144,11 +144,11 @@ impl BBox {
     }
 
     pub fn width(&self) -> Position {
-        self.right - self.left + 1
+        self.right.saturating_sub(self.left) + 1
     }
 
     pub fn height(&self) -> Position {
-        self.bottom - self.top + 1
+        self.bottom.saturating_sub(self.top) + 1
     }
 
     pub fn left(&self) -> Position {

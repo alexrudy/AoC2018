@@ -72,7 +72,7 @@ impl Turn {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct Cart {
     pub(crate) position: Point,
     pub(crate) direction: Direction,

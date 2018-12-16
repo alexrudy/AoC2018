@@ -4,5 +4,5 @@ mod cart;
 mod layout;
 mod point;
 
-pub use crate::layout::Layout;
+pub use crate::layout::{Layout, LayoutComplete, LayoutError, Track};
 pub use crate::point::Point;
