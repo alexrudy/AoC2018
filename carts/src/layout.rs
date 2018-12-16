@@ -32,19 +32,21 @@ pub enum LayoutError {
     OneCart(Point),
     OffTheRails(Point),
     Collision(Point),
+    LastCollision(Point, Point),
 }
 
 impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LayoutError::NoCarts => write!(f, "No carts on layout, nothing to run!"),
-            LayoutError::OneCart(p) => write!(
-                f,
-                "Can't wait for collision with only one cart on layout at {}!",
-                p
-            ),
+            LayoutError::OneCart(p) => write!(f, "Only one cart remains, at {}!", p),
             LayoutError::OffTheRails(p) => write!(f, "A cart went off the rails at {}", p),
             LayoutError::Collision(p) => write!(f, "Two carts collided at {}", p),
+            LayoutError::LastCollision(pcrash, pcart) => write!(
+                f,
+                "Two carts collided at {}, last cart is at {}",
+                pcrash, pcart
+            ),
         }
     }
 }
@@ -197,8 +199,15 @@ impl Layout {
             .filter(|c| positions.contains(&c.position))
             .collect();
 
-        if result.is_ok() && self.carts.len() == 1 {
-            return Err(LayoutError::OneCart(self.carts.peek().unwrap().position));
+        if self.carts.len() == 1 {
+            return match result {
+                Ok(_) => Err(LayoutError::OneCart(self.carts.peek().unwrap().position)),
+                Err(LayoutError::Collision(p)) => Err(LayoutError::LastCollision(
+                    p,
+                    self.carts.peek().unwrap().position,
+                )),
+                Err(e) => Err(e),
+            };
         }
 
         result
@@ -246,8 +255,10 @@ impl LayoutComplete {
     fn is_complete(&self, tick_result: &Result<(), LayoutError>, counter: usize) -> bool {
         match (self, tick_result) {
             (LayoutComplete::Collision, Err(LayoutError::Collision(_))) => true,
+            (LayoutComplete::Collision, Err(LayoutError::LastCollision(_, _))) => true,
             (LayoutComplete::Collision, Err(LayoutError::OneCart(_))) => true,
             (LayoutComplete::LastCart, Err(LayoutError::OneCart(_))) => true,
+            (LayoutComplete::LastCart, Err(LayoutError::LastCollision(_, _))) => true,
             (_, Err(LayoutError::NoCarts)) => true,
             (_, Err(LayoutError::OffTheRails(_))) => true,
             (LayoutComplete::Iterations(i), _) => *i <= counter,
@@ -371,8 +382,11 @@ mod test {
     #[test]
     fn example_part2() {
         let mut layout = Layout::from_str(example_layout_file!("part2_example")).unwrap();
-        let last_cart = layout.run(|_| {}, LayoutComplete::LastCart).unwrap_err();
-        assert_eq!(last_cart, LayoutError::OneCart(Point::new(6, 4)));
+        let last_cart = match layout.run(|_| {}, LayoutComplete::LastCart).unwrap_err() {
+            LayoutError::LastCollision(_, cart) => cart,
+            e => panic!("Unexpected error: {}", e),
+        };
+        assert_eq!(last_cart, Point::new(6, 4));
     }
 
     #[test]

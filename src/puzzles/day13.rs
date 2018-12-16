@@ -22,6 +22,7 @@ pub(crate) fn main() -> Result<()> {
 
     match layout.run(|_| {}, LayoutComplete::LastCart) {
         Err(LayoutError::OneCart(cart)) => println!("Part 2: {}", cart),
+        Err(LayoutError::LastCollision(_, cart)) => println!("Part 2: {}", cart),
         Err(e) => return Err(e.into()),
         Ok(()) => return err!("Layout ended without a collision!"),
     }
@@ -49,7 +50,10 @@ mod tests {
         let mut layout: Layout = include_str!("../../carts/layouts/part2_example.txt")
             .parse()
             .unwrap();
-        let last_cart = layout.run(|_| {}, LayoutComplete::LastCart);
-        assert_eq!(last_cart, Err(LayoutError::OneCart(Point::new(6, 4))))
+        let last_cart = match layout.run(|_| {}, LayoutComplete::LastCart).unwrap_err() {
+            LayoutError::LastCollision(_, cart) => cart,
+            e => panic!("Unexpected error: {}", e),
+        };
+        assert_eq!(last_cart, Point::new(6, 4));
     }
 }
