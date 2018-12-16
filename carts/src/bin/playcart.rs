@@ -256,6 +256,10 @@ fn run_layout(
         until,
     );
 
+    if tx_layout.send(layout.clone()).is_err() {
+        return;
+    }
+
     match (r, until) {
         (Ok(()), _) => {}
         (Err(LayoutError::Collision(p)), LayoutComplete::Collision) => {
