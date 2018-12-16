@@ -1,0 +1,14 @@
+[package]
+name = "carts"
+version = "0.1.0"
+authors = ["Alex Rudy <alex.rudy@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "carts"
+path = "src/lib.rs"
+
+[dependencies]
+docopt = "1"
+serde = "1.0"
+serde_derive = "1.0"

@@ -1,0 +1,138 @@
+use std::cmp::Ordering;
+use std::error::Error;
+use std::fmt;
+
+use crate::layout::Track;
+use crate::point::{Direction, Point};
+
+#[derive(Debug, PartialEq)]
+pub enum CartError {
+    OffTheRails(Point),
+    Collision(Point),
+}
+
+impl fmt::Display for CartError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl CartError {
+    pub(crate) fn from_advance(error: CartAdvanceError, position: Point) -> Self {
+        match error {
+            CartAdvanceError::OffTheRails => CartError::OffTheRails(position),
+        }
+    }
+}
+
+impl Error for CartError {}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum CartAdvanceError {
+    OffTheRails,
+}
+
+impl fmt::Display for CartAdvanceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for CartAdvanceError {}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum Turn {
+    Left,
+    Right,
+    Straight,
+}
+
+impl Turn {
+    fn next(self) -> Self {
+        match self {
+            Turn::Left => Turn::Straight,
+            Turn::Straight => Turn::Right,
+            Turn::Right => Turn::Left,
+        }
+    }
+
+    fn advance(self, direction: Direction) -> (Self, Direction) {
+        let direction = match (self, direction) {
+            (Turn::Left, Direction::Left) => Direction::Down,
+            (Turn::Left, Direction::Down) => Direction::Right,
+            (Turn::Left, Direction::Right) => Direction::Up,
+            (Turn::Left, Direction::Up) => Direction::Left,
+            (Turn::Straight, _) => direction,
+            (Turn::Right, Direction::Left) => Direction::Up,
+            (Turn::Right, Direction::Down) => Direction::Left,
+            (Turn::Right, Direction::Right) => Direction::Down,
+            (Turn::Right, Direction::Up) => Direction::Right,
+        };
+        (self.next(), direction)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Cart {
+    pub(crate) position: Point,
+    pub(crate) direction: Direction,
+    intersection: Turn,
+}
+
+const GRIDSIZE: i32 = 1000;
+
+impl PartialOrd for Cart {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl Ord for Cart {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.position.y * GRIDSIZE + self.position.x)
+            .cmp(&(other.position.y * GRIDSIZE + other.position.x))
+            .reverse()
+    }
+}
+
+impl Cart {
+    pub(crate) fn new(position: Point, direction: Direction) -> Self {
+        Self {
+            position,
+            direction,
+            intersection: Turn::Left,
+        }
+    }
+
+    fn direction(&mut self, track: Track) -> Result<Direction, CartAdvanceError> {
+        match (self.direction, track) {
+            (_, Track::Empty) => Err(CartAdvanceError::OffTheRails),
+            (Direction::Left, Track::Horizontal) => Ok(Direction::Left),
+            (Direction::Right, Track::Horizontal) => Ok(Direction::Right),
+            (_, Track::Horizontal) => Err(CartAdvanceError::OffTheRails),
+            (Direction::Up, Track::Vertical) => Ok(Direction::Up),
+            (Direction::Down, Track::Vertical) => Ok(Direction::Down),
+            (_, Track::Vertical) => Err(CartAdvanceError::OffTheRails),
+            (Direction::Up, Track::LeftCorner) => Ok(Direction::Left),
+            (Direction::Right, Track::LeftCorner) => Ok(Direction::Down),
+            (Direction::Down, Track::LeftCorner) => Ok(Direction::Right),
+            (Direction::Left, Track::LeftCorner) => Ok(Direction::Up),
+            (Direction::Up, Track::RightCorner) => Ok(Direction::Right),
+            (Direction::Right, Track::RightCorner) => Ok(Direction::Up),
+            (Direction::Down, Track::RightCorner) => Ok(Direction::Left),
+            (Direction::Left, Track::RightCorner) => Ok(Direction::Down),
+            (d, Track::Intersection) => {
+                let (turn, d) = self.intersection.advance(d);
+                self.intersection = turn;
+                Ok(d)
+            }
+        }
+    }
+
+    pub(crate) fn advance(&mut self, track: Track) -> Result<(), CartAdvanceError> {
+        self.direction = self.direction(track)?;
+        self.position = self.position.advance(self.direction);
+
+        Ok(())
+    }
+}

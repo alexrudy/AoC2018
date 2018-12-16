@@ -4,7 +4,14 @@ version = "0.1.0"
 authors = ["Alex Rudy <alex.rudy@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "aoc2018"
+path = "src/main.rs"
+
+[workspace]
+
 [dependencies]
+carts = { path = "carts" }
 docopt = "1"
 serde = "1.0"
 serde_derive = "1.0"

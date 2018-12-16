@@ -14,6 +14,8 @@ extern crate rayon;
 
 extern crate regex;
 
+extern crate carts;
+
 use docopt::Docopt;
 
 use std::fs::File;
@@ -82,6 +84,7 @@ fn main() -> Result {
         day!(day10),
         day!(day11),
         day!(day12),
+        day!(day13),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {
