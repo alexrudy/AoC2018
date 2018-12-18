@@ -135,6 +135,19 @@ mod tests {
     }
 
     #[test]
+    fn pathfinding_combat() {
+        let builder = MapBuilder::default();
+        let raw_map = example_map!("pathfinding_combat");
+        let example_map = builder.build(raw_map).unwrap();
+
+        assert_eq!(trim(raw_map), trim(&example_map.to_string()));
+        assert_eq!(example_map.sprites.len(), 4);
+
+        let path = Pathfinder::new(&example_map).find_path(Point::new(1, 1));
+        assert_eq!(path, None);
+    }
+
+    #[test]
     fn pathfinding_multi() {
         let builder = MapBuilder::default();
         let raw_map = example_map!("pathfinding_multi");
