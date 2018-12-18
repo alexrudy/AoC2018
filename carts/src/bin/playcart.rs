@@ -116,6 +116,7 @@ fn run() -> Result<(), Box<Error>> {
 
     Ok(())
 }
+
 struct Offset {
     left: isize,
     top: isize,

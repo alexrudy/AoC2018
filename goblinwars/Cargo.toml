@@ -5,3 +5,8 @@ authors = ["Alex Rudy <alex.rudy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+failure = "0.1"
+cursive = "*"
+structopt = "0.2"
+regex = "1"
+lazy_static = "1.2.0"

@@ -16,6 +16,10 @@ extern crate regex;
 
 extern crate carts;
 
+extern crate failure;
+
+extern crate goblinwars;
+
 use docopt::Docopt;
 
 use std::fs::File;
@@ -63,6 +67,11 @@ pub fn input(day: usize) -> std::io::Result<Box<::std::io::BufRead>> {
 
     Ok(Box::new(BufReader::new(f)))
 }
+pub fn input_to_string(day: usize) -> std::io::Result<String> {
+    let mut buffer = String::new();
+    input(day)?.read_to_string(&mut buffer)?;
+    Ok(buffer)
+}
 
 fn main() -> Result {
     let args: Args = Docopt::new(USAGE)
@@ -86,6 +95,7 @@ fn main() -> Result {
         day!(day12),
         day!(day13),
         day!(day14),
+        day!(day15),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {
