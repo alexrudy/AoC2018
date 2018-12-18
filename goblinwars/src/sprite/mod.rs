@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
-use std::cmp;
-use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::geometry::{Direction, Point};
+mod builder;
+mod collection;
+
+pub use self::builder::SpriteBuilder;
+pub use self::collection::Sprites;
 
 pub type Health = u32;
 
@@ -32,7 +34,7 @@ impl Species {
         !self.eq(&other)
     }
 
-    pub fn plural(&self) -> &'static str {
+    pub fn plural(self) -> &'static str {
         match self {
             Species::Elf => "Elves",
             Species::Goblin => "Goblins",
@@ -77,27 +79,17 @@ pub enum SpriteStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sprite {
     species: Species,
-    position: Point,
     hit_points: Health,
     attack_power: Health,
 }
 
 impl Sprite {
-    pub fn new(species: Species, position: Point, health: Health, attack: Health) -> Self {
+    pub fn new(species: Species, health: Health, attack: Health) -> Self {
         Self {
             species,
-            position,
             hit_points: health,
             attack_power: attack,
         }
-    }
-
-    pub fn position(&self) -> Point {
-        self.position
-    }
-
-    pub fn step(&mut self, direction: Direction) {
-        self.position = self.position.step(direction);
     }
 
     pub fn attack(&self) -> Health {
@@ -118,10 +110,6 @@ impl Sprite {
 
     pub fn health(&self) -> Health {
         self.hit_points
-    }
-
-    pub fn in_range(&self, point: Point) -> bool {
-        self.position.distance(point) == 1
     }
 
     pub fn is_enemy(&self, other: &Self) -> bool {
@@ -151,19 +139,6 @@ impl Sprite {
     }
 }
 
-// Sprite ordering happens in reading order (top left to bottom right)
-impl cmp::Ord for Sprite {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.position.reading_order(&other.position())
-    }
-}
-
-impl cmp::PartialOrd for Sprite {
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 pub struct SpriteInfo<'s> {
     sprite: &'s Sprite,
 }
@@ -181,70 +156,6 @@ pub struct SpriteGlyph<'s> {
 impl<'s> fmt::Display for SpriteGlyph<'s> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.sprite.species)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct StatBuilder {
-    default: Health,
-    species: HashMap<Species, Health>,
-}
-
-impl StatBuilder {
-    pub fn new(default: Health) -> Self {
-        Self {
-            default,
-            species: HashMap::new(),
-        }
-    }
-
-    pub fn for_species(mut self, species: Species, stat: Health) -> Self {
-        self.species.insert(species, stat);
-        self
-    }
-
-    fn get(&self, species: Species) -> Health {
-        *self.species.get(&species).unwrap_or(&self.default)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SpriteBuilder {
-    health: StatBuilder,
-    attack: StatBuilder,
-}
-
-impl Default for SpriteBuilder {
-    fn default() -> Self {
-        Self {
-            health: StatBuilder::new(200),
-            attack: StatBuilder::new(3),
-        }
-    }
-}
-
-impl SpriteBuilder {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn with_health(mut self, species: Species, health: Health) -> Self {
-        self.health = self.health.for_species(species, health);
-        self
-    }
-
-    fn with_attack(mut self, species: Species, attack: Health) -> Self {
-        self.attack = self.attack.for_species(species, attack);
-        self
-    }
-
-    pub fn build(&self, position: Point, species: Species) -> Sprite {
-        Sprite::new(
-            species,
-            position,
-            self.health.get(species),
-            self.attack.get(species),
-        )
     }
 }
 
@@ -277,8 +188,8 @@ mod tests {
 
     #[test]
     fn sprite_display() {
-        let elf = Sprite::new(Species::Elf, Point::new(0, 0), 200, 3);
-        let goblin = Sprite::new(Species::Goblin, Point::new(0, 0), 10, 3);
+        let elf = Sprite::new(Species::Elf, 200, 3);
+        let goblin = Sprite::new(Species::Goblin, 10, 3);
 
         assert_eq!(&format!("{}", elf.glyph()), "E");
         assert_eq!(&format!("{}", goblin.glyph()), "G");
@@ -289,12 +200,11 @@ mod tests {
 
     #[test]
     fn sprite_attack() {
-        let elf = Sprite::new(Species::Elf, Point::new(0, 0), 200, 3);
-        let mut goblin = Sprite::new(Species::Goblin, Point::new(0, 1), 5, 3);
+        let elf = Sprite::new(Species::Elf, 200, 3);
+        let mut goblin = Sprite::new(Species::Goblin, 5, 3);
 
         assert!(elf.is_enemy(&goblin));
         assert!(!elf.is_enemy(&elf));
-        assert!(elf.in_range(goblin.position()));
 
         assert_eq!(goblin.status(), SpriteStatus::Alive(5));
         assert_eq!(goblin.health(), 5);
@@ -304,31 +214,6 @@ mod tests {
         assert_eq!(goblin.wound(elf.attack()), SpriteStatus::Dead);
         assert_eq!(goblin.health(), 0);
         assert_eq!(goblin.status(), SpriteStatus::Dead);
-    }
-
-    #[test]
-    fn builder() {
-        let b = SpriteBuilder::default();
-        assert_eq!(
-            b.build(Point::new(1, 1), Species::Elf),
-            Sprite::new(Species::Elf, Point::new(1, 1), 200, 3)
-        );
-        assert_eq!(
-            b.build(Point::new(2, 1), Species::Goblin),
-            Sprite::new(Species::Goblin, Point::new(2, 1), 200, 3)
-        );
-
-        let b = b
-            .with_attack(Species::Elf, 6)
-            .with_health(Species::Goblin, 100);
-        assert_eq!(
-            b.build(Point::new(1, 1), Species::Elf),
-            Sprite::new(Species::Elf, Point::new(1, 1), 200, 6)
-        );
-        assert_eq!(
-            b.build(Point::new(2, 1), Species::Goblin),
-            Sprite::new(Species::Goblin, Point::new(2, 1), 100, 3)
-        );
     }
 
 }

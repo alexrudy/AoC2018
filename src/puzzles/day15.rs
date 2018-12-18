@@ -24,7 +24,4 @@ pub(crate) fn main() -> Result<()> {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-
-}
+mod test {}
