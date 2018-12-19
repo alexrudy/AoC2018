@@ -100,8 +100,9 @@ impl<'m> Round<'m> {
 
     fn direction(&self, location: Point, _outcome: RoundOutcome) -> Option<Direction> {
         if self.map.target(location).is_none() {
-            Pathfinder::new(self.map)
-                .find_path(location)
+            self.map
+                .pathfinder
+                .find_path(self.map, location)
                 .map(|path| path.direction())
         } else {
             None
@@ -122,6 +123,7 @@ impl<'m> Round<'m> {
             let location = if let Some(d) = direction {
                 self.map.sprites.step(location, d);
                 outcome = outcome.movement();
+                self.map.pathfinder.clear();
                 location.step(d)
             } else {
                 location

@@ -10,6 +10,7 @@ mod pathfinding;
 mod round;
 mod tile;
 
+use self::pathfinding::Pathfinder;
 pub use self::tile::{Grid, ParseTileError, Tile};
 
 use crate::geometry::{BoundingBox, Point};
@@ -19,6 +20,7 @@ use crate::sprite::{Health, ParseSpeciesError, Species, SpriteBuilder, Sprites};
 pub struct Map {
     pub grid: Grid,
     pub sprites: Sprites,
+    pub(crate) pathfinder: Pathfinder,
 }
 
 impl Default for Map {
@@ -32,6 +34,7 @@ impl Map {
         Self {
             grid: Grid::new(),
             sprites: Sprites::new(),
+            pathfinder: Pathfinder::new(),
         }
     }
 
