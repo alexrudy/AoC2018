@@ -1,0 +1,10 @@
+shadow = false 
+borders = "simple"
+
+[colors]
+background = "black"
+view = "black"
+primary   = "white"
+highlight = "red"
+secondary = "red"
+tertiary = "green"
