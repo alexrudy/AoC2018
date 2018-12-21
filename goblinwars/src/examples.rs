@@ -6,7 +6,7 @@ use std::str::FromStr;
 use failure::Error;
 use regex::Regex;
 
-use crate::game::Game;
+use crate::game::{Game, GameOutcome};
 use crate::map::{Map, MapBuilder, ParseMapError};
 use crate::sprite::{Health, Species};
 
@@ -33,28 +33,32 @@ impl CombatExample {
             ));
         };
 
-        if self.rounds != outcome.rounds {
-            return Err(format_err!(
-                "Rounds don't match:\nGot: {} Expected: {}",
-                outcome.rounds,
-                self.rounds
-            ));
-        }
+        if let GameOutcome::Complete(stats) = outcome {
+            if self.rounds != stats.rounds {
+                return Err(format_err!(
+                    "Rounds don't match:\nGot: {} Expected: {}",
+                    stats.rounds,
+                    self.rounds
+                ));
+            }
 
-        if self.victor != outcome.victors {
-            return Err(format_err!(
-                "Victor doesn't match:\nGot: {} Expected: {}",
-                outcome.victors,
-                self.victor
-            ));
-        }
+            if self.victor != stats.victors {
+                return Err(format_err!(
+                    "Victor doesn't match:\nGot: {} Expected: {}",
+                    stats.victors,
+                    self.victor
+                ));
+            }
 
-        if self.score != outcome.score {
-            return Err(format_err!(
-                "Score don't match:\nGot: {} Expected: {}",
-                outcome.score,
-                self.score
-            ));
+            if self.score != stats.score {
+                return Err(format_err!(
+                    "Score don't match:\nGot: {} Expected: {}",
+                    stats.score,
+                    self.score
+                ));
+            }
+        } else {
+            return Err(format_err!("Outcome not complete: {:?}", outcome));
         }
 
         Ok(())

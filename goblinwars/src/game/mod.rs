@@ -1,10 +1,37 @@
 use failure::Error;
+use std::fmt;
 
 use crate::map::Map;
 use crate::map::Pathfinders;
+use crate::sprite::{Health, Species};
 
 pub mod round;
-use self::round::{Round, RoundError, RoundOutcome, RunOutcome};
+use self::round::{Round, RoundError, RoundOutcome};
+
+#[derive(Debug)]
+pub enum GameOutcome {
+    Complete(GameComplete),
+    Stopped,
+}
+
+#[derive(Debug)]
+pub struct GameComplete {
+    pub victors: Species,
+    pub rounds: u32,
+    pub score: Health,
+}
+
+impl fmt::Display for GameComplete {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} win after {} rounds for a total score of {}",
+            self.victors.plural(),
+            self.rounds,
+            self.score
+        )
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Game {
@@ -28,7 +55,7 @@ impl Game {
         Round::new(&mut self.map, &mut self.pathfinders)
     }
 
-    pub fn run<F>(&mut self, mut f: F) -> Result<RunOutcome, RoundError>
+    pub fn run<F>(&mut self, mut f: F) -> Result<GameOutcome, RoundError>
     where
         F: FnMut(&Self, u32) -> Result<(), Box<Error>>,
     {
@@ -36,18 +63,18 @@ impl Game {
             f(&self, round).map_err(RoundError::Interrupted)?;
             match self.round().play() {
                 RoundOutcome::Victory(s) => {
-                    return Ok(RunOutcome {
+                    return Ok(GameOutcome::Complete(GameComplete {
                         rounds: round,
                         victors: s,
                         score: round * self.map.score(),
-                    })
+                    }))
                 }
                 RoundOutcome::MidRoundVictory(s) => {
-                    return Ok(RunOutcome {
+                    return Ok(GameOutcome::Complete(GameComplete {
                         rounds: round - 1,
                         victors: s,
                         score: (round - 1) * self.map.score(),
-                    })
+                    }))
                 }
                 RoundOutcome::NoAction => return Err(RoundError::NoMovesRemain),
                 _ => {}

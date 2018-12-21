@@ -6,7 +6,7 @@ use std::str::FromStr;
 mod builder;
 mod collection;
 
-pub use self::builder::SpriteBuilder;
+pub use self::builder::{SpriteBuilder, StatBuilder};
 pub use self::collection::Sprites;
 
 pub type Health = u32;
@@ -72,8 +72,8 @@ impl FromStr for Species {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpriteStatus {
-    Alive(Health),
-    Dead,
+    Alive(Species, Health),
+    Dead(Species),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,8 +103,8 @@ impl Sprite {
 
     pub fn status(&self) -> SpriteStatus {
         match self.hit_points {
-            0 => SpriteStatus::Dead,
-            h => SpriteStatus::Alive(h),
+            0 => SpriteStatus::Dead(self.species),
+            h => SpriteStatus::Alive(self.species, h),
         }
     }
 
@@ -206,14 +206,20 @@ mod tests {
         assert!(elf.is_enemy(&goblin));
         assert!(!elf.is_enemy(&elf));
 
-        assert_eq!(goblin.status(), SpriteStatus::Alive(5));
+        assert_eq!(goblin.status(), SpriteStatus::Alive(Species::Goblin, 5));
         assert_eq!(goblin.health(), 5);
-        assert_eq!(goblin.wound(elf.attack()), SpriteStatus::Alive(2));
+        assert_eq!(
+            goblin.wound(elf.attack()),
+            SpriteStatus::Alive(Species::Goblin, 2)
+        );
         assert_eq!(goblin.health(), 2);
 
-        assert_eq!(goblin.wound(elf.attack()), SpriteStatus::Dead);
+        assert_eq!(
+            goblin.wound(elf.attack()),
+            SpriteStatus::Dead(Species::Goblin)
+        );
         assert_eq!(goblin.health(), 0);
-        assert_eq!(goblin.status(), SpriteStatus::Dead);
+        assert_eq!(goblin.status(), SpriteStatus::Dead(Species::Goblin));
     }
 
 }

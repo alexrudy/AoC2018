@@ -17,4 +17,4 @@ pub mod sprite;
 pub mod views;
 
 pub use self::examples::CombatExample;
-pub use self::game::Game;
+pub use self::game::{Game, GameOutcome};

@@ -69,7 +69,7 @@ impl Sprites {
         let result = victim.wound(power);
 
         // Remove corpses from the battlefield.
-        if let SpriteStatus::Dead = result {
+        if let SpriteStatus::Dead(_) = result {
             self.sprites.remove(&target);
         };
         result

@@ -1,8 +1,7 @@
 use std::collections::BinaryHeap;
-use std::fmt;
 
 use crate::geometry::{Direction, Point};
-use crate::sprite::{Health, Species, SpriteStatus};
+use crate::sprite::{Species, SpriteStatus};
 
 use crate::map::Map;
 use crate::map::Pathfinders;
@@ -13,7 +12,7 @@ use failure::Error;
 pub enum RoundOutcome {
     NoAction,
     CombatOnly,
-    Casualty,
+    Casualty(Species),
     Movement,
     MidRoundVictory(Species),
     Victory(Species),
@@ -35,10 +34,11 @@ impl RoundOutcome {
         }
     }
 
-    fn casualty(self) -> Self {
+    fn casualty(self, species: Species) -> Self {
         match self {
-            RoundOutcome::CombatOnly => RoundOutcome::Casualty,
-            RoundOutcome::NoAction => RoundOutcome::Casualty,
+            RoundOutcome::CombatOnly => RoundOutcome::Casualty(species),
+            RoundOutcome::NoAction => RoundOutcome::Casualty(species),
+            RoundOutcome::Movement => RoundOutcome::Casualty(species),
             others => others,
         }
     }
@@ -47,7 +47,7 @@ impl RoundOutcome {
         match self {
             RoundOutcome::CombatOnly => false,
             RoundOutcome::Movement => false,
-            RoundOutcome::Casualty => false,
+            RoundOutcome::Casualty(_) => false,
             RoundOutcome::NoAction => false,
             _ => true,
         }
@@ -131,35 +131,16 @@ impl<'m> Round<'m> {
             // Next, the attack phase
             if let Some(target) = self.map.target(location) {
                 outcome = match self.map.sprites.attack(location, target) {
-                    SpriteStatus::Alive(_) => outcome.combat(),
-                    SpriteStatus::Dead => {
+                    SpriteStatus::Alive(_, _) => outcome.combat(),
+                    SpriteStatus::Dead(species) => {
                         self.pathfinder.clear();
-                        outcome.casualty()
+                        outcome.casualty(species)
                     }
                 };
             }
         }
 
         outcome
-    }
-}
-
-#[derive(Debug)]
-pub struct RunOutcome {
-    pub victors: Species,
-    pub rounds: u32,
-    pub score: Health,
-}
-
-impl fmt::Display for RunOutcome {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} win after {} rounds for a total score of {}",
-            self.victors.plural(),
-            self.rounds,
-            self.score
-        )
     }
 }
 
@@ -203,7 +184,7 @@ mod tests {
 
         assert_eq!(
             game.round()
-                .direction(Point::new(1, 1), RoundOutcome::Casualty),
+                .direction(Point::new(1, 1), RoundOutcome::Casualty(Species::Elf)),
             Some(Direction::Right)
         );
 

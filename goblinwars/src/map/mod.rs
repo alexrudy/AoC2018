@@ -102,6 +102,13 @@ impl Map {
     pub fn score(&self) -> Health {
         self.sprites.sprites().map(|s| s.health()).sum()
     }
+
+    pub fn alive(&self, species: Species) -> usize {
+        self.sprites
+            .sprites()
+            .filter(|s| s.species() == species)
+            .count()
+    }
 }
 
 impl fmt::Display for Map {
@@ -214,8 +221,8 @@ impl Default for MapBuilder {
 }
 
 impl MapBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(builder: SpriteBuilder) -> Self {
+        Self { sprite: builder }
     }
 
     pub fn build(&self, s: &str) -> Result<Map, ParseMapError> {

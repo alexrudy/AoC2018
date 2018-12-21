@@ -45,16 +45,16 @@ impl Default for SpriteBuilder {
 }
 
 impl SpriteBuilder {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    fn with_health(mut self, species: Species, health: Health) -> Self {
+    pub fn with_health(mut self, species: Species, health: Health) -> Self {
         self.health = self.health.for_species(species, health);
         self
     }
 
-    fn with_attack(mut self, species: Species, attack: Health) -> Self {
+    pub fn with_attack(mut self, species: Species, attack: Health) -> Self {
         self.attack = self.attack.for_species(species, attack);
         self
     }

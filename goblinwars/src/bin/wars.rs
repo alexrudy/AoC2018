@@ -22,9 +22,10 @@ use cursive::views::{LinearLayout, TextView};
 use cursive::Cursive;
 
 use goblinwars::map::{Map, MapBuilder};
+use goblinwars::sprite::{Health, Species, SpriteBuilder};
 use goblinwars::views::{MapView, MessageView};
 use goblinwars::CombatExample;
-use goblinwars::Game;
+use goblinwars::{Game, GameOutcome};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "wars", about = "Play a goblin wars scenario.")]
@@ -38,6 +39,10 @@ struct Opt {
     /// Set speed
     #[structopt(short = "s", long = "speed", default_value = "1")]
     speed: u64,
+
+    #[structopt(short = "a", long = "attack", default_value = "3")]
+    attack: Health,
+
     /// Input file
     #[structopt(parse(from_os_str))]
     input: PathBuf,
@@ -52,7 +57,7 @@ fn load(path: &PathBuf) -> io::Result<String> {
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
-    let builder = MapBuilder::default();
+    let builder = MapBuilder::new(SpriteBuilder::new().with_attack(Species::Elf, opt.attack));
 
     let map = if opt.example {
         load(&opt.input)?.parse::<CombatExample>()?.map
@@ -109,7 +114,8 @@ fn worker(map: Map, link: Link, delay: time::Duration) {
     thread::sleep(delay);
 
     match result {
-        Ok(outcome) => link.message.send(outcome.to_string()).unwrap(),
+        Ok(GameOutcome::Complete(outcome)) => link.message.send(outcome.to_string()).unwrap(),
+        Ok(GameOutcome::Stopped) => link.message.send("Game stopped".to_string()).unwrap(),
         Err(e) => link.message.send(format!("Error: {}", e)).unwrap(),
     };
 }
