@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 
 use super::Map;
@@ -23,23 +24,19 @@ impl SpritePath {
         }
     }
 
-    pub fn paths(point: Point) -> Vec<SpritePath> {
-        let mut paths = Vec::with_capacity(4);
-        for direction in Direction::all() {
-            paths.push(SpritePath {
-                destination: point.step(direction),
-                direction: direction,
-                distance: 1,
-            })
-        }
-        paths
-    }
-
-    pub fn extend(&self, direction: Direction) -> Self {
+    pub fn step(&self, direction: Direction) -> Self {
         Self {
             destination: self.destination.step(direction),
             direction: self.direction,
             distance: self.distance + 1,
+        }
+    }
+
+    pub fn extend(&self, extension: &Self) -> Self {
+        Self {
+            destination: extension.destination,
+            direction: self.direction,
+            distance: self.distance + extension.distance,
         }
     }
 
@@ -53,8 +50,98 @@ impl SpritePath {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct PathSegment {
+    direction: Direction,
+    path: Vec<Point>,
+}
+
+impl PathSegment {
+    fn new(origin: Point, direction: Direction) -> Self {
+        Self {
+            direction,
+            path: vec![origin],
+        }
+    }
+
+    pub fn destination(&self) -> Point {
+        *self.path.iter().last().unwrap()
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+
+    pub fn distance(&self) -> Position {
+        Position::try_from(self.path.len()).unwrap()
+    }
+
+    pub fn step(&self, direction: Direction) -> Self {
+        let mut path = self.clone();
+        path.path.push(self.destination().step(direction));
+        path
+    }
+
+    pub fn extend(&self, extension: &Self) -> Self {
+        let mut path = self.clone();
+        path.path.extend(extension.path.iter().cloned());
+        path
+    }
+
+    pub fn paths(point: Point) -> Vec<Self> {
+        let mut paths = Vec::with_capacity(4);
+        for direction in Direction::all() {
+            paths.push(Self::new(point.step(direction), direction));
+        }
+        paths
+    }
+}
+
+impl From<PathSegment> for SpritePath {
+    fn from(ps: PathSegment) -> SpritePath {
+        SpritePath::new(ps.destination(), ps.direction(), ps.distance())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pathfinders {
+    pathfinders: HashMap<Species, Pathfinder>,
+}
+
+impl Default for Pathfinders {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Pathfinders {
+    pub fn new() -> Self {
+        Self {
+            pathfinders: HashMap::new(),
+        }
+    }
+
+    pub fn get(&mut self, species: Species) -> &Pathfinder {
+        self.pathfinders
+            .entry(species)
+            .or_insert_with(Pathfinder::new)
+    }
+
+    pub fn clear(&mut self) {
+        for pf in self.pathfinders.values() {
+            pf.clear()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pathfinder {
     path_cache: RefCell<HashMap<Point, Option<SpritePath>>>,
+}
+
+impl Default for Pathfinder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Pathfinder {
@@ -62,6 +149,24 @@ impl Pathfinder {
         Self {
             path_cache: RefCell::from(HashMap::new()),
         }
+    }
+
+    fn calculate_partial_path(
+        &self,
+        map: &Map,
+        candidate: PathSegment,
+        visited: &mut HashSet<Point>,
+    ) -> Vec<PathSegment> {
+        let mut paths = Vec::new();
+        for direction in Direction::all() {
+            let next_point = candidate.destination().step(direction);
+            if !visited.contains(&next_point) && !map.is_occupied(next_point) {
+                paths.push(candidate.step(direction));
+                visited.insert(next_point);
+            }
+        }
+
+        paths
     }
 
     fn calculate_shortest_path(&self, map: &Map, origin: Point) -> Option<SpritePath> {
@@ -75,29 +180,34 @@ impl Pathfinder {
 
         let mut visited = HashSet::new();
 
+        // Candidate cached paths.
+        let mut candidates = Vec::new();
+
         let mut paths = VecDeque::from_iter(
-            SpritePath::paths(origin)
+            PathSegment::paths(origin)
                 .into_iter()
-                .filter(|p| map.element(p.destination()).is_empty()),
+                .filter(|p| !map.is_occupied(p.destination())),
         );
 
         while !paths.is_empty() {
             let candidate = paths.pop_front().unwrap();
 
+            // Novel destination case
             if targets.contains(&candidate.destination()) {
-                return Some(candidate);
+                candidates.push(candidate);
+                continue;
             }
 
-            visited.insert(candidate.destination());
-            for direction in Direction::all() {
-                let next_point = candidate.destination().step(direction);
-                if !visited.contains(&next_point) && map.element(next_point).is_empty() {
-                    paths.push_back(candidate.extend(direction))
-                }
-            }
+            paths.extend(
+                self.calculate_partial_path(map, candidate, &mut visited)
+                    .into_iter(),
+            );
         }
 
-        None
+        candidates
+            .into_iter()
+            .min_by_key(|c| c.distance())
+            .map(|c| c.into())
     }
 
     /// Find a path between the origin point given and an enemy.
@@ -190,4 +300,40 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn pathfinding_cache_line() {
+        let builder = MapBuilder::default();
+        let raw_map = example_map!("pathfinding_cache_line");
+        let example_map = builder.build(raw_map).unwrap();
+
+        assert_eq!(trim(raw_map), trim(&example_map.to_string()));
+        let pathfinder = Pathfinder::new();
+        let path = pathfinder.find_path(&example_map, Point::new(1, 1));
+        assert_eq!(path, None);
+
+        let path = pathfinder.find_path(&example_map, Point::new(1, 2));
+        assert_eq!(path, None);
+
+        let path = pathfinder.find_path(&example_map, Point::new(5, 3));
+        assert_eq!(
+            path,
+            Some(SpritePath {
+                destination: Point::new(1, 11),
+                direction: Direction::Down,
+                distance: 12,
+            })
+        );
+
+        let path = pathfinder.find_path(&example_map, Point::new(4, 9));
+        assert_eq!(
+            path,
+            Some(SpritePath {
+                destination: Point::new(2, 12),
+                direction: Direction::Down,
+                distance: 7,
+            })
+        );
+    }
+
 }

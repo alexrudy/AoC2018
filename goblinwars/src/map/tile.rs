@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -51,7 +51,7 @@ impl FromStr for Tile {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Grid(HashSet<Point>);
+pub struct Grid(BTreeSet<Point>);
 
 impl Default for Grid {
     fn default() -> Self {
@@ -61,7 +61,7 @@ impl Default for Grid {
 
 impl Grid {
     pub fn new() -> Self {
-        Grid(HashSet::new())
+        Grid(BTreeSet::new())
     }
 
     pub fn insert(&mut self, point: Point, tile: Tile) -> bool {
@@ -69,6 +69,10 @@ impl Grid {
             Tile::Empty => self.0.insert(point),
             Tile::Wall => self.0.remove(&point),
         }
+    }
+
+    pub fn contains(&self, point: Point) -> bool {
+        self.0.contains(&point)
     }
 
     pub fn get(&self, point: Point) -> Tile {

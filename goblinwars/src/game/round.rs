@@ -4,8 +4,8 @@ use std::fmt;
 use crate::geometry::{Direction, Point};
 use crate::sprite::{Health, Species, SpriteStatus};
 
-use super::pathfinding::Pathfinder;
-use super::Map;
+use crate::map::Map;
+use crate::map::Pathfinders;
 
 use failure::Error;
 
@@ -52,13 +52,6 @@ impl RoundOutcome {
             _ => true,
         }
     }
-
-    fn is_stable(self) -> bool {
-        match self {
-            RoundOutcome::CombatOnly => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug, Fail)]
@@ -72,13 +65,18 @@ pub enum RoundError {
 
 pub struct Round<'m> {
     map: &'m mut Map,
+    pathfinder: &'m mut Pathfinders,
     queue: BinaryHeap<Point>,
 }
 
 impl<'m> Round<'m> {
-    pub fn new(map: &'m mut Map) -> Self {
+    pub fn new(map: &'m mut Map, pathfinder: &'m mut Pathfinders) -> Self {
         let queue = map.sprites.positions().cloned().collect();
-        Self { map, queue }
+        Self {
+            map,
+            queue,
+            pathfinder,
+        }
     }
 
     pub fn play(mut self) -> RoundOutcome {
@@ -98,10 +96,11 @@ impl<'m> Round<'m> {
         outcome
     }
 
-    fn direction(&self, location: Point, _outcome: RoundOutcome) -> Option<Direction> {
+    fn direction(&mut self, location: Point, _outcome: RoundOutcome) -> Option<Direction> {
         if self.map.target(location).is_none() {
-            self.map
-                .pathfinder
+            let species = self.map.sprites.get(location)?.species();
+            self.pathfinder
+                .get(species)
                 .find_path(self.map, location)
                 .map(|path| path.direction())
         } else {
@@ -123,7 +122,7 @@ impl<'m> Round<'m> {
             let location = if let Some(d) = direction {
                 self.map.sprites.step(location, d);
                 outcome = outcome.movement();
-                self.map.pathfinder.clear();
+                self.pathfinder.clear();
                 location.step(d)
             } else {
                 location
@@ -133,7 +132,10 @@ impl<'m> Round<'m> {
             if let Some(target) = self.map.target(location) {
                 outcome = match self.map.sprites.attack(location, target) {
                     SpriteStatus::Alive(_) => outcome.combat(),
-                    SpriteStatus::Dead => outcome.casualty(),
+                    SpriteStatus::Dead => {
+                        self.pathfinder.clear();
+                        outcome.casualty()
+                    }
                 };
             }
         }
@@ -161,45 +163,12 @@ impl fmt::Display for RunOutcome {
     }
 }
 
-impl Map {
-    pub(crate) fn round(&mut self) -> Round {
-        Round::new(self)
-    }
-
-    pub fn run<F>(&mut self, mut f: F) -> Result<RunOutcome, RoundError>
-    where
-        F: FnMut(&Self, u32) -> Result<(), Box<Error>>,
-    {
-        for round in 1.. {
-            f(&self, round).map_err(RoundError::Interrupted)?;
-            match self.round().play() {
-                RoundOutcome::Victory(s) => {
-                    return Ok(RunOutcome {
-                        rounds: round,
-                        victors: s,
-                        score: round * self.score(),
-                    })
-                }
-                RoundOutcome::MidRoundVictory(s) => {
-                    return Ok(RunOutcome {
-                        rounds: round - 1,
-                        victors: s,
-                        score: (round - 1) * self.score(),
-                    })
-                }
-                RoundOutcome::NoAction => return Err(RoundError::NoMovesRemain),
-                _ => {}
-            }
-        }
-        unreachable!()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use super::super::MapBuilder;
+    use crate::game::Game;
+    use crate::map::MapBuilder;
 
     use crate::examples::map_ascii_trim;
 
@@ -216,7 +185,8 @@ mod tests {
     #[test]
     fn movement() {
         let builder = MapBuilder::default();
-        let mut example_map = builder.build(example_map!("movement/1")).unwrap();
+        let example_map = builder.build(example_map!("movement/1")).unwrap();
+        let mut game = Game::new(example_map);
 
         let maps = vec![
             example_map!("movement/1"),
@@ -226,48 +196,41 @@ mod tests {
         ];
 
         assert_eq!(
-            example_map
-                .round()
+            game.round()
                 .direction(Point::new(1, 1), RoundOutcome::NoAction),
             Some(Direction::Right)
         );
 
-        // assert_eq!(
-        //     example_map.direction(Point::new(1, 1), RoundOutcome::CombatOnly),
-        //     None
-        // );
-
         assert_eq!(
-            example_map
-                .round()
+            game.round()
                 .direction(Point::new(1, 1), RoundOutcome::Casualty),
             Some(Direction::Right)
         );
 
-        assert_eq!(trim(maps[0]), trim(&example_map.to_string()));
+        assert_eq!(trim(maps[0]), trim(&game.map().to_string()));
 
         {
-            let mut em = example_map.clone();
+            let mut g2 = game.clone();
             ;
             assert_eq!(
-                em.round().tick(RoundOutcome::NoAction),
+                g2.round().tick(RoundOutcome::NoAction),
                 RoundOutcome::Movement
             );
         }
 
         for (i, raw_map) in maps.iter().enumerate() {
             assert_eq!(
-                trim(&example_map.to_string()),
+                trim(&game.map().to_string()),
                 trim(raw_map),
                 "Map doesn't line up at {}\ngot:\n{}\nexpected:\n{}",
                 i,
-                trim(&example_map.to_string()),
+                trim(&game.map().to_string()),
                 trim(raw_map)
             );
-            example_map.round().play();
+            game.round().play();
         }
 
-        assert_eq!(trim(maps[3]), trim(&example_map.to_string()));
+        assert_eq!(trim(maps[3]), trim(&game.map().to_string()));
     }
 
 }

@@ -24,6 +24,7 @@ use cursive::Cursive;
 use goblinwars::map::{Map, MapBuilder};
 use goblinwars::views::{MapView, MessageView};
 use goblinwars::CombatExample;
+use goblinwars::Game;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "wars", about = "Play a goblin wars scenario.")]
@@ -91,11 +92,12 @@ struct Link {
     message: mpsc::Sender<String>,
 }
 
-fn worker(mut map: Map, link: Link, delay: time::Duration) {
-    let result = map.run(|m, t| {
+fn worker(map: Map, link: Link, delay: time::Duration) {
+    let mut game = Game::new(map);
+    let result = game.run(|m, t| {
         thread::sleep(delay);
         link.map
-            .send(m.clone())
+            .send(m.map().clone())
             .map_err(|e| format_err!("Sending failed: {}", e))?;
         link.message
             .send(format!("Time: {}", t))
@@ -103,7 +105,7 @@ fn worker(mut map: Map, link: Link, delay: time::Duration) {
         Ok(())
     });
 
-    link.map.send(map.clone()).unwrap();
+    link.map.send(game.map().clone()).unwrap();
     thread::sleep(delay);
 
     match result {

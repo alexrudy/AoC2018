@@ -7,10 +7,9 @@ use std::num::TryFromIntError;
 use std::str::FromStr;
 
 mod pathfinding;
-mod round;
 mod tile;
 
-use self::pathfinding::Pathfinder;
+pub use self::pathfinding::{Pathfinder, Pathfinders};
 pub use self::tile::{Grid, ParseTileError, Tile};
 
 use crate::geometry::{BoundingBox, Point};
@@ -20,7 +19,6 @@ use crate::sprite::{Health, ParseSpeciesError, Species, SpriteBuilder, Sprites};
 pub struct Map {
     pub grid: Grid,
     pub sprites: Sprites,
-    pub(crate) pathfinder: Pathfinder,
 }
 
 impl Default for Map {
@@ -34,7 +32,6 @@ impl Map {
         Self {
             grid: Grid::new(),
             sprites: Sprites::new(),
-            pathfinder: Pathfinder::new(),
         }
     }
 
@@ -54,7 +51,11 @@ impl Map {
         }
     }
 
-    fn victorious(&self) -> Option<Species> {
+    pub fn is_occupied(&self, position: Point) -> bool {
+        self.sprites.contains(position) || !self.grid.contains(position)
+    }
+
+    pub fn victorious(&self) -> Option<Species> {
         self.sprites.victorious()
     }
 
@@ -73,7 +74,7 @@ impl Map {
         }
         targets.sort_by(|(p_a, s_a), (p_b, s_b)| {
             // First attack lower health enemies. If two enemies have
-            // the same health
+            // the same health, resolve ties with position read order.
             s_a.health().cmp(&s_b.health()).then(p_a.cmp(p_b).reverse())
         });
 
@@ -246,7 +247,8 @@ mod tests {
     use super::*;
 
     use crate::examples::{map_ascii_trim, CombatExample};
-    use crate::map::round::RoundOutcome;
+    use crate::game::round::RoundOutcome;
+    use crate::game::Game;
 
     use std::fs;
     use std::io::Read;
@@ -290,31 +292,31 @@ mod tests {
     #[test]
     fn combat() {
         let builder = MapBuilder::default();
-        let mut example_map = builder.build(example_map!("combat/initial")).unwrap();
+        let mut game = Game::new(builder.build(example_map!("combat/initial")).unwrap());
 
         if let Some(raw_map) = load_combat_round(1) {
             assert_eq!(
                 trim(&raw_map),
-                trim(&example_map.status().to_string()),
+                trim(&game.map().status().to_string()),
                 "combat mismatch on round {}",
                 1
             )
         }
 
         for round in 2..50 {
-            let outcome = example_map.round().play();
+            let _ = game.round().play();
 
             if let Some(raw_map) = load_combat_round(round) {
                 assert_eq!(
                     trim(&raw_map),
-                    trim(&example_map.status().to_string()),
+                    trim(&game.map().status().to_string()),
                     "combat mismatch on round {}",
                     round
                 )
             }
         }
 
-        assert_eq!(example_map.score() * 47, 27730);
+        assert_eq!(game.map().score() * 47, 27730);
     }
 
     macro_rules! check_example {
@@ -345,9 +347,9 @@ mod tests {
     #[test]
     fn examples_part1_example1() {
         let ce = CombatExample::from_str(example_map!("example1")).unwrap();
-        let mut map = ce.map.clone();
+        let mut game = Game::new(ce.map.clone());
 
-        assert_eq!(map.round().play(), RoundOutcome::Movement);
+        assert_eq!(game.round().play(), RoundOutcome::Movement);
     }
 
 }

@@ -1,11 +1,11 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BTreeMap, BinaryHeap};
 
 use super::{Species, Sprite, SpriteStatus};
 use crate::geometry::{BoundingBox, Direction, Point};
 
 #[derive(Debug, Clone)]
 pub struct Sprites {
-    sprites: HashMap<Point, Sprite>,
+    sprites: BTreeMap<Point, Sprite>,
 }
 
 impl Default for Sprites {
@@ -17,7 +17,7 @@ impl Default for Sprites {
 impl Sprites {
     pub fn new() -> Self {
         Self {
-            sprites: HashMap::new(),
+            sprites: BTreeMap::new(),
         }
     }
 
@@ -52,6 +52,10 @@ impl Sprites {
     pub fn peek(&self) -> Option<&Sprite> {
         let positions: BinaryHeap<Point> = self.positions().cloned().collect();
         positions.peek().and_then(|p| self.get(*p))
+    }
+
+    pub fn contains(&self, point: Point) -> bool {
+        self.sprites.contains_key(&point)
     }
 
     pub fn step(&mut self, point: Point, direction: Direction) {

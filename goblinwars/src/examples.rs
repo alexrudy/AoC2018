@@ -6,6 +6,7 @@ use std::str::FromStr;
 use failure::Error;
 use regex::Regex;
 
+use crate::game::Game;
 use crate::map::{Map, MapBuilder, ParseMapError};
 use crate::sprite::{Health, Species};
 
@@ -21,13 +22,13 @@ pub struct CombatExample {
 
 impl CombatExample {
     pub(crate) fn check(&self) -> Result<(), Error> {
-        let mut map = self.map.clone();
-        let outcome = map.run(|_, _| Ok(()))?;
+        let mut game = Game::new(self.map.clone());
+        let outcome = game.run(|_, _| Ok(()))?;
 
-        if map_ascii_trim(&map.status().to_string()) != map_ascii_trim(&self.outcome) {
+        if map_ascii_trim(&game.map().status().to_string()) != map_ascii_trim(&self.outcome) {
             return Err(format_err!(
                 "Outcome map doesn't match:\nGot:\n{}\nExpected:\n{}",
-                map_ascii_trim(&map.status().to_string()),
+                map_ascii_trim(&game.map().status().to_string()),
                 map_ascii_trim(&self.outcome)
             ));
         };
