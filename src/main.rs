@@ -1,8 +1,4 @@
 #![macro_use]
-#![feature(test)]
-
-#[cfg(test)]
-extern crate test;
 
 #[macro_use]
 extern crate serde_derive;

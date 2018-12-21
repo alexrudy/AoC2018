@@ -37,7 +37,7 @@ pub(crate) fn main() -> Result<()> {
 
         let outcome = game
             .run(|_, t| {
-                eprint!("\r Time: {:3} ({:3})", t, attack);
+                eprint!("\r Time: {:3} ({:2})", t, attack);
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
@@ -57,24 +57,4 @@ pub(crate) fn main() -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    use test::Bencher;
-
-    #[bench]
-    fn bench_pathfinder_nocache(b: &mut Bencher) {
-        use crate::input_to_string;
-
-        let map = MapBuilder::default()
-            .build(&input_to_string(15).unwrap())
-            .map_err(|e| e.to_string())
-            .unwrap();
-
-        // b.iter(|| {
-        //     map.clone().round().play();
-        // });
-    }
-
-}
+mod tests {}
