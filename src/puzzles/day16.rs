@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use std::cmp;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::error::Error;
 use std::fmt;
@@ -24,12 +23,14 @@ pub(crate) fn main() -> Result<(), Box<Error>> {
     let mut decoder = Decoder::new();
     decoder.discover(&samples).map_err(|e| e.to_string())?;
 
-    let test_program: Vec<_> = test_program.into_iter().map(|i| decoder.decode(i)).collect();
+    let test_program: Vec<_> = test_program
+        .into_iter()
+        .map(|i| decoder.decode(i))
+        .collect();
 
     let state = Register::new();
     let outcome = processor(state, &test_program).map_err(|e| e.to_string())?;
     println!("Part 2: {}", outcome.get(0).map_err(|e| e.to_string())?);
-
 
     Ok(())
 }
@@ -155,6 +156,7 @@ impl fmt::Display for Register {
 impl FromStr for Register {
     type Err = ParseRegisterError;
 
+    #[allow(deprecated)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let values: Vec<Value> = s
             .trim()
@@ -527,7 +529,10 @@ impl Decoder {
     }
 
     fn decode(&self, instruction: RawInstruction) -> Instruction {
-        let opcode = self.codes.get(&instruction.opcode).expect("Invalid decoding:");
+        let opcode = self
+            .codes
+            .get(&instruction.opcode)
+            .expect("Invalid decoding:");
         instruction.convert(*opcode)
     }
 
@@ -539,8 +544,8 @@ impl Decoder {
             let sample_candidates = sample.identify();
             if sample_candidates.is_empty() {
                 return Err(DecoderError::NoSolution(sample.instruction.opcode));
-            }            
-            
+            }
+
             let candidates = identifiers
                 .entry(sample.instruction.opcode)
                 .or_insert_with(|| sample_candidates.clone());
@@ -557,13 +562,8 @@ impl Decoder {
             let opcode = queue.pop_front().expect("The queue can't be empty!");
             if identifiers[&opcode].len() == 1 {
                 let oc = *identifiers[&opcode].iter().nth(0).unwrap();
-                if solution
-                    .insert(oc, opcode)
-                    .is_some()
-                {
-                    return Err(DecoderError::MultipleSolutions(
-                        oc,
-                    ));
+                if solution.insert(oc, opcode).is_some() {
+                    return Err(DecoderError::MultipleSolutions(oc));
                 }
             } else if identifiers[&opcode].is_empty() {
                 return Err(DecoderError::NoSolution(opcode));
@@ -572,10 +572,9 @@ impl Decoder {
                     .get_mut(&opcode)
                     .map(|set| set.retain(|c| !solution.contains_key(c)))
                     .ok_or_else(|| DecoderError::NoSolution(opcode))?;
-                
+
                 queue.push_back(opcode);
             }
-
         }
 
         for (key, value) in &solution {
@@ -641,7 +640,10 @@ After:  [3, 2, 2, 1]"
         let instruction: RawInstruction = "12 2 3 2".parse().unwrap();
 
         let outcome = Register::from_slice(&[3, 0, 1, 2]).unwrap();
-        assert_eq!(instruction.convert(Opcode::Eqir).process(register).unwrap(), outcome);
+        assert_eq!(
+            instruction.convert(Opcode::Eqir).process(register).unwrap(),
+            outcome
+        );
     }
 
 }
