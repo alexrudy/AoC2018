@@ -67,14 +67,14 @@ impl Game {
                         rounds: round,
                         victors: s,
                         score: round * self.map.score(),
-                    }))
+                    }));
                 }
                 RoundOutcome::MidRoundVictory(s) => {
                     return Ok(GameOutcome::Complete(GameComplete {
                         rounds: round - 1,
                         victors: s,
                         score: (round - 1) * self.map.score(),
-                    }))
+                    }));
                 }
                 RoundOutcome::NoAction => return Err(RoundError::NoMovesRemain),
                 _ => {}

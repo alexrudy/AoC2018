@@ -16,6 +16,7 @@ extern crate regex;
 
 extern crate carts;
 
+#[macro_use]
 extern crate failure;
 
 extern crate goblinwars;
@@ -96,6 +97,7 @@ fn main() -> Result {
         day!(day13),
         day!(day14),
         day!(day15),
+        day!(day16),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {
