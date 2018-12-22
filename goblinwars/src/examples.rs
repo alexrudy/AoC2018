@@ -1,9 +1,8 @@
-#![allow(dead_code)]
-
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use failure::Error;
+use failure::{format_err, Error, Fail};
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::game::{Game, GameOutcome};

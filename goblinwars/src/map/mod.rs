@@ -6,13 +6,16 @@ use std::fmt;
 use std::num::TryFromIntError;
 use std::str::FromStr;
 
+use failure::Fail;
+
+use geometry::{BoundingBox, Point};
+
 mod pathfinding;
 mod tile;
 
 pub use self::pathfinding::{Pathfinder, Pathfinders};
 pub use self::tile::{Grid, ParseTileError, Tile};
 
-use crate::geometry::{BoundingBox, Point};
 use crate::sprite::{Health, ParseSpeciesError, Species, SpriteBuilder, Sprites};
 
 #[derive(Debug, Clone)]

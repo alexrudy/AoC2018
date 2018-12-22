@@ -393,7 +393,7 @@ mod test {
     #[test]
     fn collision_removes_both() {
         let mut layout = Layout::from_str(example_layout_file!("test_collision")).unwrap();
-        assert_eq!(layout.tick(), Err(LayoutError::Collision(Point::new(3, 0))));
+        assert_eq!(layout.tick(), Err(LayoutError::LastCollision(Point::new(3, 0), Point::new(5, 2))));
 
         assert_eq!(layout.carts.len(), 1);
     }

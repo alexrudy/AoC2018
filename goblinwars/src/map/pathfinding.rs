@@ -4,8 +4,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 
+use geometry::{Direction, Point, Position};
+
 use super::Map;
-use crate::geometry::{Direction, Point, Position};
 use crate::sprite::Species;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

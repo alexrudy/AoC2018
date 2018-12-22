@@ -7,9 +7,9 @@ use cursive::traits::*;
 use cursive::vec::Vec2;
 use cursive::Printer;
 
-use crate::geometry::Point;
 use crate::map::{Map, MapElement};
 use crate::sprite::Species;
+use geometry::Point;
 
 #[derive(Debug)]
 struct Offset {

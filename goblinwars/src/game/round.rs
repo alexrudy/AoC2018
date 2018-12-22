@@ -1,10 +1,12 @@
 use std::collections::BinaryHeap;
 
-use crate::geometry::{Direction, Point};
-use crate::sprite::{Species, SpriteStatus};
+use failure::Fail;
+
+use geometry::{Direction, Point};
 
 use crate::map::Map;
 use crate::map::Pathfinders;
+use crate::sprite::{Species, SpriteStatus};
 
 use failure::Error;
 

@@ -1,11 +1,7 @@
-#[macro_use]
-extern crate criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 
-use criterion::Criterion;
+use geometry::Direction;
 
-extern crate goblinwars;
-
-use goblinwars::geometry::Direction;
 use goblinwars::map::Pathfinder;
 use goblinwars::map::{MapBuilder, MapElement};
 use goblinwars::sprite::Species;

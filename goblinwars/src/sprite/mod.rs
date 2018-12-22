@@ -3,6 +3,8 @@
 use std::fmt;
 use std::str::FromStr;
 
+use failure::Fail;
+
 mod builder;
 mod collection;
 

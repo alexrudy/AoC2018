@@ -13,6 +13,7 @@ cursive = "*"
 structopt = "0.2"
 regex = "1"
 lazy_static = "1.2.0"
+geometry = { path = "../geometry/" }
 
 [dev-dependencies]
 criterion = "0.2"

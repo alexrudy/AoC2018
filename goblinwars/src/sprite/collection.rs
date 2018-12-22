@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BinaryHeap};
 
 use super::{Species, Sprite, SpriteStatus};
-use crate::geometry::{BoundingBox, Direction, Point};
+use geometry::{BoundingBox, Direction, Point};
 
 #[derive(Debug, Clone)]
 pub struct Sprites {

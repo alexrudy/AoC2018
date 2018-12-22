@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::geometry::{BoundingBox, Point};
+use failure::Fail;
+
+use geometry::{BoundingBox, Point};
 
 #[derive(Debug, Clone, PartialEq, Eq, Fail)]
 pub enum ParseTileError {
