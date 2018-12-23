@@ -3,14 +3,20 @@ use std::error::Error;
 use std::io::BufRead;
 use std::str::FromStr;
 
+use geometry;
+
 use regex::Regex;
 
 type Result<T> = ::std::result::Result<T, Box<Error>>;
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq, PartialOrd, Ord, Hash)]
-struct Point {
-    x: i32,
-    y: i32,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct Point(geometry::Point);
+
+impl Point {
+    #[cfg(test)]
+    fn new(x: i32, y: i32) -> Self {
+        Point(geometry::Point::new(x, y))
+    }
 }
 
 impl FromStr for Point {
@@ -26,95 +32,40 @@ impl FromStr for Point {
             Some(c) => c,
         };
 
-        Ok(Self {
-            x: cap["x"].parse()?,
-            y: cap["y"].parse()?,
-        })
+        Ok(Point(geometry::Point::new(
+            cap["x"].parse()?,
+            cap["y"].parse()?,
+        )))
     }
 }
 
 impl Point {
     fn distance(self, other: Point) -> i32 {
-        (self.x - other.x).abs() + (self.y - other.y).abs()
+        self.0.manhattan_distance(other.0)
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq, PartialOrd, Ord, Hash)]
-struct BBox {
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
-}
-
-impl BBox {
-    fn from_points(points: &[Point]) -> Self {
-        let x_max = points.iter().map(|p| p.x).max().unwrap() + 1;
-        let y_max = points.iter().map(|p| p.y).max().unwrap() + 1;
-        let x_min = points.iter().map(|p| p.x).min().unwrap() - 1;
-        let y_min = points.iter().map(|p| p.y).min().unwrap() - 1;
-
-        Self {
-            x: x_min,
-            y: y_min,
-            w: x_max - x_min,
-            h: y_max - y_min,
-        }
-    }
-
-    fn iter(&self) -> BBoxIterator {
-        BBoxIterator {
-            bbox: &self,
-            px: 0,
-            py: 0,
-        }
-    }
-
-    fn edge(&self, point: Point) -> bool {
-        point.x == self.x
-            || point.x == (self.x + self.w)
-            || point.y == self.y
-            || point.y == (self.y + self.h)
+impl From<Point> for geometry::Point {
+    fn from(p: Point) -> Self {
+        p.0
     }
 }
 
-struct BBoxIterator<'b> {
-    bbox: &'b BBox,
-    px: i32,
-    py: i32,
-}
-
-impl<'b> Iterator for BBoxIterator<'b> {
-    type Item = Point;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.px == self.bbox.w {
-            self.px = 0;
-            self.py += 1;
-        }
-
-        if self.py >= self.bbox.h {
-            return None;
-        }
-
-        let result = Some(Point {
-            x: self.px + self.bbox.x,
-            y: self.py + self.bbox.y,
-        });
-        self.px += 1;
-        result
+impl From<geometry::Point> for Point {
+    fn from(p: geometry::Point) -> Self {
+        Point(p)
     }
 }
 
 #[derive(Debug, PartialEq)]
 struct Grid {
-    bbox: BBox,
+    bbox: geometry::BoundingBox,
     counter: HashMap<Point, i32>,
     infinite: HashSet<Point>,
 }
 
 impl Grid {
-    fn from_bbox(bbox: BBox) -> Self {
+    fn from_bbox(bbox: geometry::BoundingBox) -> Self {
         Self {
             bbox: bbox,
             counter: HashMap::new(),
@@ -126,7 +77,7 @@ impl Grid {
         if let Some(pt) = closest(location, points) {
             *self.counter.entry(pt).or_insert(0) += 1;
 
-            if self.bbox.edge(location) {
+            if self.bbox.is_edge(location.into()) {
                 self.infinite.insert(pt);
             }
         }
@@ -144,22 +95,23 @@ impl Grid {
 }
 
 fn vornoi_largest_area(points: &[Point]) -> i32 {
-    let bbox = BBox::from_points(points);
+    let bbox = geometry::BoundingBox::from_points(points.iter().map(|&p| p.into()));
     let mut grid = Grid::from_bbox(bbox);
 
-    for location in bbox.iter() {
-        grid.check(location, points);
+    for location in bbox.points() {
+        grid.check(location.into(), points);
     }
 
     grid.largest_area()
 }
 
 fn protected_area(points: &[Point], distance_limit: i32) -> usize {
-    let bbox = BBox::from_points(points);
+    let bbox = geometry::BoundingBox::from_points(points.iter().map(|&p| p.into()));
 
-    bbox.iter()
-        .filter(|location| {
-            points.iter().map(|p| location.distance(*p)).sum::<i32>() < distance_limit
+    bbox.points()
+        .filter(|&location| {
+            let glocation: Point = location.into();
+            points.iter().map(|&p| glocation.distance(p)).sum::<i32>() < distance_limit
         })
         .count()
 }
@@ -223,14 +175,11 @@ mod test {
     fn example_part1() {
         let points: Vec<Point> = points();
 
-        assert_eq!(points[0], Point { x: 1, y: 1 });
+        assert_eq!(points[0], Point::new(1, 1));
 
-        assert_eq!(points[0].distance(Point { x: 0, y: 3 }), 3);
+        assert_eq!(points[0].distance(Point::new(0, 3)), 3);
 
-        assert_eq!(
-            closest(Point { x: 0, y: 3 }, &points),
-            Some(Point { x: 1, y: 1 })
-        );
+        assert_eq!(closest(Point::new(0, 3), &points), Some(Point::new(1, 1)));
 
         assert_eq!(vornoi_largest_area(&points), 17);
     }

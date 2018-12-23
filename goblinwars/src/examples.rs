@@ -1,11 +1,16 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use failure::{format_err, Error, Fail};
+use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+#[cfg(test)]
 use crate::game::{Game, GameOutcome};
+
+#[cfg(test)]
+use failure::{format_err, Error};
+
 use crate::map::{Map, MapBuilder, ParseMapError};
 use crate::sprite::{Health, Species};
 
@@ -20,6 +25,7 @@ pub struct CombatExample {
 }
 
 impl CombatExample {
+    #[cfg(test)]
     pub(crate) fn check(&self) -> Result<(), Error> {
         let mut game = Game::new(self.map.clone());
         let outcome = game.run(|_, _| Ok(()))?;
@@ -196,6 +202,7 @@ impl FromStr for CombatExample {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn map_ascii_trim(s: &str) -> String {
     let parts = s
         .lines()

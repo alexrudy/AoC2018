@@ -71,7 +71,7 @@ impl Map {
         for (target_location, target_sprite) in
             self.sprites.iter().filter(|(_, s)| sprite.is_enemy(s))
         {
-            if target_location.distance(location) == 1 {
+            if target_location.manhattan_distance(location) == 1 {
                 targets.push((target_location, target_sprite));
             }
         }
@@ -93,9 +93,9 @@ impl Map {
             .iter()
             .filter(|(_, s)| species.is_enemy(s.species()))
         {
-            for neighbor in &position.adjacent() {
-                if self.element(*neighbor).is_empty() {
-                    targets.insert(*neighbor);
+            for neighbor in position.adjacent() {
+                if self.element(neighbor).is_empty() {
+                    targets.insert(neighbor);
                 }
             }
         }
@@ -234,7 +234,7 @@ impl MapBuilder {
         for (y, line) in s.lines().enumerate() {
             if !line.trim().is_empty() {
                 for (x, c) in line.trim().chars().enumerate() {
-                    let point = Point::new(isize::try_from(x)?, isize::try_from(y)?);
+                    let point = Point::new(i32::try_from(x)?, i32::try_from(y)?);
                     match c.to_string().parse::<MapElement>()? {
                         MapElement::Tile(tile) => {
                             map.grid.insert(point, tile);

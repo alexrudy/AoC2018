@@ -3,8 +3,13 @@
 use std::cmp;
 use std::fmt;
 use std::ops::RangeInclusive;
+use std::str::FromStr;
 
-pub type Position = isize;
+use failure::Fail;
+use lazy_static::lazy_static;
+use regex::Regex;
+
+pub type Position = i32;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -14,17 +19,19 @@ pub enum Direction {
     Right,
 }
 
+const DIRECTIONS: [Direction; 4] = [
+    Direction::Up,
+    Direction::Left,
+    Direction::Right,
+    Direction::Down,
+];
+
 impl Direction {
     /// Enumertates all directions of movement in "reading order",
     /// i.e. such that the resulting points are in reading order
     /// from the current position.
-    pub fn all() -> Vec<Self> {
-        vec![
-            Direction::Up,
-            Direction::Left,
-            Direction::Right,
-            Direction::Down,
-        ]
+    pub fn all() -> impl Iterator<Item = Self> {
+        DIRECTIONS.iter().cloned()
     }
 }
 
@@ -39,7 +46,7 @@ impl Point {
         Self { x, y }
     }
 
-    pub fn reading_order(&self, other: &Point) -> cmp::Ordering {
+    pub fn reading_order(self, other: Point) -> cmp::Ordering {
         self.y.cmp(&other.y).then(self.x.cmp(&other.x)).reverse()
     }
 
@@ -80,23 +87,18 @@ impl Point {
         }
     }
 
-    pub fn adjacent(&self) -> Vec<Self> {
-        let mut adjacent_points = Vec::with_capacity(4);
-        adjacent_points.push(self.up());
-        adjacent_points.push(self.down());
-        adjacent_points.push(self.left());
-        adjacent_points.push(self.right());
-        adjacent_points
+    pub fn adjacent(self) -> impl Iterator<Item = Self> {
+        Direction::all().map(move |d| self.step(d))
     }
 
-    pub fn distance(&self, other: Point) -> Position {
+    pub fn manhattan_distance(self, other: Point) -> Position {
         (self.x - other.x).abs() + (self.y - other.y).abs()
     }
 }
 
 impl cmp::Ord for Point {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.reading_order(other)
+        self.reading_order(*other)
     }
 }
 
@@ -109,6 +111,38 @@ impl cmp::PartialOrd for Point {
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{},{}", self.x, self.y)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum ParsePointError {
+    #[fail(display = "Invalid Point: {}", _0)]
+    InvalidLiteral(String),
+
+    #[fail(display = "Invalid Number Literal")]
+    InvalidNumber,
+}
+
+impl From<::std::num::ParseIntError> for ParsePointError {
+    fn from(_: ::std::num::ParseIntError) -> Self {
+        ParsePointError::InvalidNumber
+    }
+}
+
+impl FromStr for Point {
+    type Err = ParsePointError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"(?P<x>[\d]+),\s*(?P<y>[\d]+)").unwrap();
+        };
+
+        let cap = match RE.captures(s) {
+            None => return Err(ParsePointError::InvalidLiteral(s.to_string())),
+            Some(c) => c,
+        };
+
+        Ok(Self::new(cap["x"].parse()?, cap["y"].parse()?))
     }
 }
 
@@ -143,6 +177,14 @@ impl BoundingBox {
         if point.y > self.bottom {
             self.bottom = point.y;
         }
+    }
+
+    pub fn from_points(points: impl Iterator<Item = Point>) -> Self {
+        let mut bbox = Self::empty();
+        for point in points {
+            bbox.include(point);
+        }
+        bbox
     }
 
     pub fn union(&self, other: &Self) -> Self {
@@ -217,6 +259,49 @@ impl BoundingBox {
     pub fn bottom(&self) -> Position {
         self.bottom
     }
+
+    pub fn is_edge(&self, point: Point) -> bool {
+        point.x == self.left
+            || point.x == self.right
+            || point.y == self.top
+            || point.y == self.bottom
+    }
+
+    pub fn points(&self) -> BoundingBoxIterator {
+        BoundingBoxIterator {
+            bbox: self,
+            px: 0,
+            py: 0,
+        }
+    }
+}
+
+pub struct BoundingBoxIterator<'b> {
+    bbox: &'b BoundingBox,
+    px: i32,
+    py: i32,
+}
+
+impl<'b> Iterator for BoundingBoxIterator<'b> {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.px == self.bbox.width() {
+            self.px = 0;
+            self.py += 1;
+        }
+
+        if self.py >= self.bbox.height() {
+            return None;
+        }
+
+        let result = Some(Point {
+            x: self.px + self.bbox.left(),
+            y: self.py + self.bbox.top(),
+        });
+        self.px += 1;
+        result
+    }
 }
 
 #[cfg(test)]
@@ -256,7 +341,7 @@ mod tests {
 
         let mut others = steps.clone();
         others.reverse();
-        steps.sort_by(|s, o| s.reading_order(o));
+        steps.sort_by(|s, o| s.reading_order(*o));
         assert_eq!(steps, others);
     }
 
