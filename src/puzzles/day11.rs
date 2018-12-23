@@ -219,6 +219,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn example_part2_a() {
         let grid = Grid::new(18);
 
@@ -229,6 +230,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn example_part2_b() {
         let grid = Grid::new(42);
 
