@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BinaryHeap};
+use std::collections::BTreeMap;
 
 use super::{Species, Sprite, SpriteStatus};
 use geometry::{BoundingBox, Direction, Point};
@@ -50,8 +50,7 @@ impl Sprites {
     }
 
     pub fn peek(&self) -> Option<&Sprite> {
-        let positions: BinaryHeap<Point> = self.positions().cloned().collect();
-        positions.peek().and_then(|p| self.get(*p))
+        self.positions().min().and_then(|p| self.get(*p))
     }
 
     pub fn contains(&self, point: Point) -> bool {
@@ -113,6 +112,6 @@ mod tests {
 
         let mut spos = s.positions().cloned().collect::<Vec<_>>();
         spos.sort();
-        assert_eq!(spos, vec![Point::new(1, 3), Point::new(1, 1)]);
+        assert_eq!(spos, vec![Point::new(1, 1), Point::new(1, 3)]);
     }
 }

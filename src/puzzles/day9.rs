@@ -1,7 +1,13 @@
 use std::collections::{HashMap, VecDeque};
-use std::error::Error;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
 type Marble = usize;
 
 pub(crate) fn main() -> Result<()> {

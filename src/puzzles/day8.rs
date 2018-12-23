@@ -1,7 +1,8 @@
 use std::collections::VecDeque;
-use std::error::Error;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+use failure::{format_err, Error};
+
+type Result<T> = ::std::result::Result<T, Error>;
 type Number = usize;
 
 fn get_data() -> Result<VecDeque<Number>> {
@@ -11,7 +12,7 @@ fn get_data() -> Result<VecDeque<Number>> {
     input(8)?.read_to_string(&mut data)?;
     let data: Result<VecDeque<Number>> = data
         .split_whitespace()
-        .map(|d| d.parse::<Number>().map_err(Box::<Error>::from))
+        .map(|d| d.parse::<Number>().map_err(Error::from))
         .collect();
     data
 }
@@ -36,10 +37,10 @@ impl NodeHeader {
         Ok(Self {
             children: data
                 .pop_front()
-                .ok_or_else(|| newerr!("No data for header"))?,
+                .ok_or_else(|| format_err!("No data for header"))?,
             metadata: data
                 .pop_front()
-                .ok_or_else(|| newerr!("Not enough entries for header"))?,
+                .ok_or_else(|| format_err!("Not enough entries for header"))?,
         })
     }
 }
@@ -62,7 +63,7 @@ impl Node {
         for _ in 0..header.metadata {
             meta.push(
                 data.pop_front()
-                    .ok_or_else(|| newerr!("Not enough data for metata"))?,
+                    .ok_or_else(|| format_err!("Not enough data for metata"))?,
             );
         }
 
@@ -96,7 +97,7 @@ mod test {
     fn example_part1() {
         let tree: Result<VecDeque<Number>> = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"
             .split_whitespace()
-            .map(|n| n.parse::<Number>().map_err(Box::<Error>::from))
+            .map(|n| n.parse::<Number>().map_err(Error::from))
             .collect();
         let mut tree = tree.unwrap();
 
@@ -118,7 +119,7 @@ mod test {
     fn example_part2() {
         let tree: Result<VecDeque<Number>> = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"
             .split_whitespace()
-            .map(|n| n.parse::<Number>().map_err(Box::<Error>::from))
+            .map(|n| n.parse::<Number>().map_err(Error::from))
             .collect();
         let mut tree = tree.unwrap();
 

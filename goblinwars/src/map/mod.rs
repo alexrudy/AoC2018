@@ -78,7 +78,7 @@ impl Map {
         targets.sort_by(|(p_a, s_a), (p_b, s_b)| {
             // First attack lower health enemies. If two enemies have
             // the same health, resolve ties with position read order.
-            s_a.health().cmp(&s_b.health()).then(p_a.cmp(p_b).reverse())
+            s_a.health().cmp(&s_b.health()).then(p_a.cmp(p_b))
         });
 
         targets.get(0).map(|(&p, _)| p)

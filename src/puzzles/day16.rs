@@ -1,19 +1,19 @@
 #![allow(dead_code)]
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
-use std::error::Error;
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
+use failure::{Error, Fail};
 use itertools::Itertools;
 
-pub(crate) fn main() -> Result<(), Box<Error>> {
+pub(crate) fn main() -> Result<(), Error> {
     use crate::input_to_string;
 
     let s = input_to_string(16)?;
 
-    let (samples, test_program) = samples_and_program(&s).map_err(|e| e.to_string())?;
+    let (samples, test_program) = samples_and_program(&s)?;
 
     println!(
         "Part 1: {}",
@@ -21,7 +21,7 @@ pub(crate) fn main() -> Result<(), Box<Error>> {
     );
 
     let mut decoder = Decoder::new();
-    decoder.discover(&samples).map_err(|e| e.to_string())?;
+    decoder.discover(&samples)?;
 
     let test_program: Vec<_> = test_program
         .into_iter()
@@ -29,8 +29,8 @@ pub(crate) fn main() -> Result<(), Box<Error>> {
         .collect();
 
     let state = Register::new();
-    let outcome = processor(state, &test_program).map_err(|e| e.to_string())?;
-    println!("Part 2: {}", outcome.get(0).map_err(|e| e.to_string())?);
+    let outcome = processor(state, &test_program)?;
+    println!("Part 2: {}", outcome.get(0)?);
 
     Ok(())
 }

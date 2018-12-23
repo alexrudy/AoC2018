@@ -1,13 +1,18 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::io::BufRead;
 use std::str::FromStr;
 
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use regex::Regex;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
 
 pub(crate) fn main() -> Result<()> {
     use crate::input;
@@ -15,7 +20,7 @@ pub(crate) fn main() -> Result<()> {
     let instructions: Vec<Instruction> = input(7)?
         .lines()
         .map(|line| {
-            line.map_err(Box::<Error>::from)
+            line.map_err(Error::from)
                 .and_then(|l| l.parse::<Instruction>())
         })
         .collect::<Result<Vec<_>>>()?;
@@ -152,7 +157,7 @@ struct Instruction {
 }
 
 impl FromStr for Instruction {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         //Step C must be finished before step A can begin.
@@ -392,7 +397,7 @@ Step F must be finished before step E can begin.";
             .unwrap()
             .lines()
             .map(|line| {
-                line.map_err(Box::<Error>::from)
+                line.map_err(Error::from)
                     .and_then(|l| l.parse::<Instruction>())
             })
             .collect::<Result<Vec<_>>>()
@@ -427,7 +432,7 @@ Step F must be finished before step E can begin.";
             .unwrap()
             .lines()
             .map(|line| {
-                line.map_err(Box::<Error>::from)
+                line.map_err(Error::from)
                     .and_then(|l| l.parse::<Instruction>())
             })
             .collect::<Result<Vec<_>>>()

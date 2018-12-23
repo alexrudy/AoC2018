@@ -1,13 +1,18 @@
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::io::BufRead;
 use std::str::FromStr;
 
 use geometry;
 
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use regex::Regex;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point(geometry::Point);
@@ -20,7 +25,7 @@ impl Point {
 }
 
 impl FromStr for Point {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         lazy_static! {
@@ -141,7 +146,7 @@ fn get_input() -> Result<Vec<Point>> {
 
     Ok(input(6)?
         .lines()
-        .map(|l| l.map_err(Box::<Error>::from).and_then(|s| s.parse()))
+        .map(|l| l.map_err(Error::from).and_then(|s| s.parse()))
         .collect::<Result<Vec<Point>>>()?)
 }
 

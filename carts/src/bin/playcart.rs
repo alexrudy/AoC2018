@@ -10,7 +10,6 @@ extern crate cursive;
 extern crate docopt;
 
 use std::convert::TryFrom;
-use std::error::Error;
 use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
@@ -19,6 +18,7 @@ use std::sync::mpsc;
 use std::{thread, time};
 
 use docopt::Docopt;
+use failure::{format_err, Error};
 
 use geometry::Point;
 
@@ -55,7 +55,7 @@ fn main() {
     }
 }
 
-fn load_layout<P>(path: P) -> Result<Layout, Box<Error>>
+fn load_layout<P>(path: P) -> Result<Layout, Error>
 where
     P: AsRef<Path>,
 {
@@ -71,12 +71,12 @@ where
 fn build_ui(
     rx_layout: mpsc::Receiver<Layout>,
     rx_message: mpsc::Receiver<String>,
-) -> Result<Cursive, Box<Error>> {
+) -> Result<Cursive, Error> {
     let mut siv = Cursive::default();
 
     siv.set_fps(30);
     siv.load_toml(include_str!("theme.toml"))
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format_err!("{:?}", e))?;
 
     siv.add_global_callback('q', |s| s.quit());
 
@@ -90,7 +90,7 @@ fn build_ui(
     Ok(siv)
 }
 
-fn run() -> Result<(), Box<Error>> {
+fn run() -> Result<(), Error> {
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());

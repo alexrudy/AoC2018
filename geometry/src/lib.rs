@@ -98,7 +98,7 @@ impl Point {
 
 impl cmp::Ord for Point {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.reading_order(*other)
+        self.y.cmp(&other.y).then(self.x.cmp(&other.x))
     }
 }
 
@@ -216,6 +216,24 @@ impl BoundingBox {
         Self {
             left: self.left - size,
             right: self.right + size,
+            top: self.top - size,
+            bottom: self.bottom + size,
+        }
+    }
+
+    pub fn horizontal_margin(&self, size: Position) -> Self {
+        Self {
+            left: self.left - size,
+            right: self.right + size,
+            top: self.top,
+            bottom: self.bottom,
+        }
+    }
+
+    pub fn vertical_margin(&self, size: Position) -> Self {
+        Self {
+            left: self.left,
+            right: self.right,
             top: self.top - size,
             bottom: self.bottom + size,
         }

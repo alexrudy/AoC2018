@@ -1,14 +1,13 @@
+use std::cmp;
 use std::collections::BinaryHeap;
 
-use failure::Fail;
+use failure::{Error, Fail};
 
 use geometry::{Direction, Point};
 
 use crate::map::Map;
 use crate::map::Pathfinders;
 use crate::sprite::{Species, SpriteStatus};
-
-use failure::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RoundOutcome {
@@ -62,18 +61,45 @@ pub enum RoundError {
     NoMovesRemain,
 
     #[fail(display = "Game interrupted: {}", _0)]
-    Interrupted(Box<Error>),
+    Interrupted(Error),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct QPoint(Point);
+
+impl cmp::Ord for QPoint {
+    fn cmp(&self, other: &QPoint) -> cmp::Ordering {
+        self.0.cmp(&other.0).reverse()
+    }
+}
+
+impl cmp::PartialOrd for QPoint {
+    fn partial_cmp(&self, other: &QPoint) -> Option<cmp::Ordering> {
+        Some(self.0.cmp(&other.0).reverse())
+    }
+}
+
+impl From<Point> for QPoint {
+    fn from(p: Point) -> QPoint {
+        QPoint(p)
+    }
+}
+
+impl From<QPoint> for Point {
+    fn from(q: QPoint) -> Point {
+        q.0
+    }
 }
 
 pub struct Round<'m> {
     map: &'m mut Map,
     pathfinder: &'m mut Pathfinders,
-    queue: BinaryHeap<Point>,
+    queue: BinaryHeap<QPoint>,
 }
 
 impl<'m> Round<'m> {
     pub fn new(map: &'m mut Map, pathfinder: &'m mut Pathfinders) -> Self {
-        let queue = map.sprites.positions().cloned().collect();
+        let queue = map.sprites.positions().cloned().map(|p| p.into()).collect();
         Self {
             map,
             queue,
@@ -116,7 +142,7 @@ impl<'m> Round<'m> {
             return RoundOutcome::MidRoundVictory(victor);
         }
 
-        if let Some(location) = self.queue.pop() {
+        if let Some(location) = self.queue.pop().map(|q| q.into()) {
             // First, the pathfinding phase
             let direction = self.direction(location, outcome);
 

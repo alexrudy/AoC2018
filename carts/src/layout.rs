@@ -1,21 +1,22 @@
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::convert::TryFrom;
-use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
 use std::str::FromStr;
 
+use failure::{format_err, Error, Fail};
+
 use geometry::{BoundingBox, Direction, Point};
 
-type ParseResult<T> = Result<T, Box<Error>>;
+type ParseResult<T> = Result<T, Error>;
 
 use crate::cart::{Cart, CartError};
 use crate::point::Direction as CDirection;
 
 macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -28,32 +29,23 @@ pub enum Track {
     Empty,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Fail, PartialEq)]
 pub enum LayoutError {
+    #[fail(display = "No carts on layout, nothing to run!")]
     NoCarts,
+
+    #[fail(display = "Only one cart remains, at {}!", _0)]
     OneCart(Point),
+
+    #[fail(display = "A cart went off the rails at {}", _0)]
     OffTheRails(Point),
+
+    #[fail(display = "Two carts collided at {}", _0)]
     Collision(Point),
+
+    #[fail(display = "Two carts collided at {}, last cart is at {}", _0, _1)]
     LastCollision(Point, Point),
 }
-
-impl fmt::Display for LayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            LayoutError::NoCarts => write!(f, "No carts on layout, nothing to run!"),
-            LayoutError::OneCart(p) => write!(f, "Only one cart remains, at {}!", p),
-            LayoutError::OffTheRails(p) => write!(f, "A cart went off the rails at {}", p),
-            LayoutError::Collision(p) => write!(f, "Two carts collided at {}", p),
-            LayoutError::LastCollision(pcrash, pcart) => write!(
-                f,
-                "Two carts collided at {}, last cart is at {}",
-                pcrash, pcart
-            ),
-        }
-    }
-}
-
-impl Error for LayoutError {}
 
 impl From<CartError> for LayoutError {
     fn from(ce: CartError) -> Self {
@@ -82,7 +74,7 @@ impl Default for Track {
 }
 
 impl FromStr for Track {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> ParseResult<Self> {
         if s.len() != 1 {
@@ -232,7 +224,7 @@ impl Layout {
         Ok(())
     }
 
-    pub fn from_file<P>(path: P) -> Result<Self, Box<Error>>
+    pub fn from_file<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -278,7 +270,7 @@ enum Element {
 }
 
 impl FromStr for Element {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> ParseResult<Self> {
         match s.parse::<Track>() {
@@ -293,7 +285,7 @@ impl FromStr for Element {
 }
 
 impl FromStr for Layout {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> ParseResult<Self> {
         let mut layout = Self::new();

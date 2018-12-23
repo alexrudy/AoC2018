@@ -1,7 +1,12 @@
-use std::error::Error;
 use std::io::prelude::*;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+use failure::{format_err, Error};
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
 
 use carts::{Layout, LayoutComplete, LayoutError};
 

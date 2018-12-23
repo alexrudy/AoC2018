@@ -1,11 +1,16 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use regex::Regex;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+type Result<T> = ::std::result::Result<T, Error>;
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
 
 fn parse_sky() -> Result<Sky> {
     use crate::input;
@@ -41,7 +46,7 @@ impl Coordinate {
 }
 
 impl FromStr for Coordinate {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         lazy_static! {
@@ -88,7 +93,7 @@ impl Light {
 }
 
 impl FromStr for Light {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         lazy_static! {
@@ -169,7 +174,7 @@ impl Sky {
 }
 
 impl FromStr for Sky {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let lights = s

@@ -1,21 +1,18 @@
 use std::cmp::Ordering;
-use std::error::Error;
-use std::fmt;
+
+use failure::Fail;
 
 use geometry::{Direction, Point};
 
 use crate::layout::Track;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Fail, PartialEq)]
 pub enum CartError {
+    #[fail(display = "Off the rails at {}", _0)]
     OffTheRails(Point),
-    Collision(Point),
-}
 
-impl fmt::Display for CartError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
+    #[fail(display = "Collision at {}", _0)]
+    Collision(Point),
 }
 
 impl CartError {
@@ -26,20 +23,11 @@ impl CartError {
     }
 }
 
-impl Error for CartError {}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Fail, PartialEq)]
 pub(crate) enum CartAdvanceError {
+    #[fail(display = "Off the rails")]
     OffTheRails,
 }
-
-impl fmt::Display for CartAdvanceError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Error for CartAdvanceError {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Turn {

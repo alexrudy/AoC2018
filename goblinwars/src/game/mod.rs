@@ -57,7 +57,7 @@ impl Game {
 
     pub fn run<F>(&mut self, mut f: F) -> Result<GameOutcome, RoundError>
     where
-        F: FnMut(&Self, u32) -> Result<(), Box<Error>>,
+        F: FnMut(&Self, u32) -> Result<(), Error>,
     {
         for round in 1.. {
             f(&self, round).map_err(RoundError::Interrupted)?;

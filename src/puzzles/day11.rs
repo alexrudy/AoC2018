@@ -1,9 +1,16 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+use failure::{format_err, Error};
+
+use itertools::iproduct;
+
+type Result<T> = ::std::result::Result<T, Error>;
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
 
 pub(crate) fn main() -> Result<()> {
     let grid = Grid::new(1133);
@@ -11,13 +18,13 @@ pub(crate) fn main() -> Result<()> {
     println!(
         "Part 1: {}",
         grid.max_patch()
-            .ok_or_else(|| newerr!("No patches found"))?
+            .ok_or_else(|| format_err!("No patches found"))?
             .0
     );
 
     let (coord, size, _) = grid
         .max_vpatch()
-        .ok_or_else(|| newerr!("No patches found"))?;
+        .ok_or_else(|| format_err!("No patches found"))?;
 
     println!("Part 2: {},{}", coord, size);
 
@@ -49,7 +56,7 @@ impl Coordinate {
 }
 
 impl FromStr for Coordinate {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let parts: Vec<&str> = s.split(',').collect();

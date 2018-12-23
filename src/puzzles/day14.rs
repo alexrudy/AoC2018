@@ -1,6 +1,6 @@
-use std::error::Error;
+use failure::Error;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+type Result<T> = ::std::result::Result<T, Error>;
 
 pub(crate) fn main() -> Result<()> {
     let recipies = evovle(306_281);

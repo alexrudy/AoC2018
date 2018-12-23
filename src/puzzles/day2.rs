@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::io::BufRead;
 
-type Result<T> = ::std::result::Result<T, Box<::std::error::Error>>;
+use failure::{format_err, Error};
+
+type Result<T> = ::std::result::Result<T, Error>;
 
 fn box_checksum(boxid: &str) -> (usize, usize) {
     let mut counts = HashMap::new();
@@ -72,7 +74,7 @@ fn matching_boxes(boxids: Vec<String>) -> Result<String> {
             }
         }
     }
-    Err(From::from("No close ID pairs"))
+    Err(format_err!("No close ID pairs"))
 }
 
 fn part2() -> Result<String> {

@@ -1,10 +1,15 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::fmt;
 use std::io::BufRead;
 use std::str::FromStr;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+use failure::{format_err, Error};
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
+
+type Result<T> = ::std::result::Result<T, Error>;
 
 fn get_pots() -> Result<(Pots, Vec<Note>)> {
     use crate::input;
@@ -14,20 +19,17 @@ fn get_pots() -> Result<(Pots, Vec<Note>)> {
     let initial_state = lines
         .by_ref()
         .nth(0)
-        .ok_or_else(|| newerr!("No lines to read."))??;
+        .ok_or_else(|| format_err!("No lines to read."))??;
     let pots: Pots = initial_state
         .split(':')
         .nth(1)
-        .ok_or_else(|| newerr!("Not enough input on line 1: {}", initial_state))?
+        .ok_or_else(|| format_err!("Not enough input on line 1: {}", initial_state))?
         .trim()
         .parse::<Pots>()?;
 
     let notes = lines
         .skip(1)
-        .map(|r| {
-            r.map_err(Box::<Error>::from)
-                .and_then(|s| s.parse::<Note>())
-        })
+        .map(|r| r.map_err(Error::from).and_then(|s| s.parse::<Note>()))
         .filter(|nr| nr.as_ref().map(|n| n.grow).unwrap_or(true))
         .collect::<Result<Vec<Note>>>()?;
     Ok((pots, notes))
@@ -138,7 +140,7 @@ impl fmt::Display for Pots {
 }
 
 impl FromStr for Pots {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         Ok(Pots(
@@ -158,7 +160,7 @@ struct Note {
 }
 
 impl FromStr for Note {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let mut chars = s.chars();

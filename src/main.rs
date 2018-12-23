@@ -1,45 +1,20 @@
 #![macro_use]
 
-#[macro_use]
-extern crate serde_derive;
-extern crate docopt;
-
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate itertools;
-
-extern crate rayon;
-
-extern crate regex;
-
-extern crate carts;
-
-#[macro_use]
-extern crate failure;
-
-extern crate goblinwars;
+use failure::Error;
 
 use docopt::Docopt;
 
+use serde_derive::Deserialize;
+
 use std::fs::File;
 use std::io::BufReader;
-
-#[macro_export]
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<::std::error::Error>::from(format!($($tt)*))) }
-}
-
-#[macro_export]
-macro_rules! newerr {
-    ($($tt:tt)*) => { Box::<::std::error::Error>::from(format!($($tt)*)) }
-}
 
 mod puzzles;
 
 const USAGE: &str = "
 Advent of Code 2018.
+
+Solves a given day's puzzle.
 
 Usage:
     aoc2018 <day>
@@ -57,8 +32,6 @@ struct Args {
     arg_day: usize,
 }
 
-type Result = ::std::result::Result<(), Box<::std::error::Error>>;
-
 pub fn input(day: usize) -> std::io::Result<Box<::std::io::BufRead>> {
     let mut p = ::std::path::PathBuf::from("puzzles");
     p.push(format!("{}", day));
@@ -74,14 +47,14 @@ pub fn input_to_string(day: usize) -> std::io::Result<String> {
     Ok(buffer)
 }
 
-fn main() -> Result {
+fn main() -> Result<(), Error> {
     let args: Args = Docopt::new(USAGE)
         .and_then(|dopt| dopt.deserialize())
         .unwrap_or_else(|e| e.exit());
 
     println!("Solving AoC for Day {}", args.arg_day);
 
-    let solvers: Vec<Box<Fn() -> Result>> = vec![
+    let solvers: Vec<Box<Fn() -> Result<(), Error>>> = vec![
         day!(day1),
         day!(day2),
         day!(day3),
@@ -98,6 +71,7 @@ fn main() -> Result {
         day!(day14),
         day!(day15),
         day!(day16),
+        day!(day17),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {

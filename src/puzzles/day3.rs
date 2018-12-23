@@ -1,14 +1,15 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::io::BufRead;
 use std::str::FromStr;
 
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use regex::Regex;
 
 type Coordinate = u32;
 
 macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
 }
 
 type Grid = HashMap<(Coordinate, Coordinate), usize>;
@@ -31,7 +32,7 @@ fn overlap(grid: &Grid) -> usize {
     grid.values().filter(|&&c| c > 1).count()
 }
 
-fn no_overlap(claims: &[Claim], grid: &Grid) -> Result<usize, Box<Error>> {
+fn no_overlap(claims: &[Claim], grid: &Grid) -> Result<usize, Error> {
     for claim in claims {
         if claim.points().all(|ref p| grid[p] == 1) {
             return Ok(claim.id);
@@ -40,7 +41,7 @@ fn no_overlap(claims: &[Claim], grid: &Grid) -> Result<usize, Box<Error>> {
     err!("No claim has zero overlaps!")
 }
 
-pub(crate) fn main() -> Result<(), Box<Error>> {
+pub(crate) fn main() -> Result<(), Error> {
     use crate::input;
 
     let claims = input(3)?
@@ -103,7 +104,7 @@ impl<'c> Iterator for ClaimPoints<'c> {
 }
 
 impl FromStr for Claim {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {

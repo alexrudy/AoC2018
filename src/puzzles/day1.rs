@@ -2,6 +2,8 @@ use std::collections::HashSet;
 use std::io::BufRead;
 use std::iter::Iterator;
 
+use failure::Error;
+
 type Result<T> = ::std::result::Result<T, ::std::num::ParseIntError>;
 
 fn parse_frequencies(s: &str) -> Result<i32> {
@@ -39,21 +41,21 @@ where
     }
 }
 
-pub(crate) fn part1() -> ::std::result::Result<i32, Box<::std::error::Error>> {
+pub(crate) fn part1() -> ::std::result::Result<i32, Error> {
     use crate::input;
 
     let answer = calibrate_frequncy(input(1)?.lines().map(|l| parse_frequencies(&l.unwrap())))?;
     Ok(answer)
 }
 
-pub(crate) fn part2() -> ::std::result::Result<i32, Box<::std::error::Error>> {
+pub(crate) fn part2() -> ::std::result::Result<i32, Error> {
     use crate::input;
 
     let answer = repeated_frequency(input(1)?.lines().map(|l| parse_frequencies(&l.unwrap())))?;
     Ok(answer)
 }
 
-pub(crate) fn main() -> ::std::result::Result<(), Box<::std::error::Error>> {
+pub(crate) fn main() -> ::std::result::Result<(), Error> {
     let frequency = part1()?;
     println!("Part 1: {}", frequency);
 

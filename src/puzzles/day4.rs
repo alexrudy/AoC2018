@@ -1,12 +1,17 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
 use std::io::BufRead;
 use std::str::FromStr;
 
 use chrono::naive::{NaiveDate, NaiveDateTime};
 use chrono::{Duration, Timelike};
+use failure::{format_err, Error};
+use lazy_static::lazy_static;
 use regex::Regex;
+
+macro_rules! err {
+    ($($tt:tt)*) => { Err(format_err!($($tt)*)) }
+}
 
 #[derive(Clone)]
 struct Shift {
@@ -16,7 +21,7 @@ struct Shift {
 }
 
 struct Roster(HashMap<u32, Vec<Shift>>);
-type Result<T> = ::std::result::Result<T, Box<Error>>;
+type Result<T> = ::std::result::Result<T, Error>;
 
 impl Shift {
     fn new(id: u32, date: NaiveDate) -> Self {
@@ -228,7 +233,7 @@ fn sleepiest_guard(shifts: &Roster) -> Result<(u32, Vec<Shift>)> {
     shifts
         .iter()
         .max_by_key(|(_, shifts)| shifts.iter().map(|s| s.asleep()).sum::<u32>())
-        .ok_or_else(|| Box::<Error>::from("No guard was ever asleep".to_string()))
+        .ok_or_else(|| format_err!("No guard was ever asleep"))
         .map(|(&gid, shifts)| (gid, shifts.clone()))
 }
 
@@ -248,7 +253,7 @@ fn most_asleep_minute_and_count(shifts: &[Shift]) -> Result<(u32, u32)> {
         .iter()
         .enumerate()
         .max_by_key(|(_, &c)| c)
-        .ok_or_else(|| Box::<Error>::from("Guard was never asleep".to_string()))
+        .ok_or_else(|| format_err!("Guard was never asleep"))
         .map(|(m, c)| (m as u32, *c))
 }
 
@@ -262,7 +267,7 @@ fn algorithm_part2(shifts: &Roster) -> Result<u32> {
     mams.iter()
         .map(|(gid, (m, c))| (gid, m, c))
         .max_by_key(|(_, _, &c)| c)
-        .ok_or_else(|| Box::<Error>::from("No guard was ever asleep".to_string()))
+        .ok_or_else(|| format_err!("No guard was ever asleep"))
         .map(|(gid, m, _)| gid * m)
 }
 
@@ -280,7 +285,7 @@ enum LogEntryValue {
 }
 
 impl FromStr for LogEntryValue {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         match s.trim() {
@@ -309,7 +314,7 @@ struct LogEntry {
 }
 
 impl FromStr for LogEntry {
-    type Err = Box<Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         lazy_static! {
