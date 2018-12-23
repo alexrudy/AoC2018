@@ -1,18 +1,15 @@
 [package]
-name = "carts"
+name = "waterfall"
 version = "0.1.0"
 authors = ["Alex Rudy <alex.rudy@gmail.com>"]
 edition = "2018"
 
-[lib]
-name = "carts"
-path = "src/lib.rs"
-
 [dependencies]
-docopt = "1"
-serde = "1.0"
-serde_derive = "1.0"
-cursive = "*"
-geometry = { path = "../geometry" }
-cursive_aoc_views = { path = "../cursive_aoc_views" }
 failure = "0.1"
+cursive = "*"
+structopt = "0.2"
+regex = "1"
+lazy_static = "1.2.0"
+geometry = { path = "../geometry/" }
+cursive_aoc_views = { path = "../cursive_aoc_views" }
+itertools = "0.7.11"

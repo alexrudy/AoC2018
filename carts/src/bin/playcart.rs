@@ -1,15 +1,8 @@
 #![feature(try_from)]
 
-extern crate carts;
+use serde_derive::Deserialize;
 
-#[macro_use]
-extern crate serde_derive;
-
-extern crate cursive;
-
-extern crate docopt;
-
-use std::convert::TryFrom;
+use std::collections::HashMap;
 use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
@@ -20,18 +13,17 @@ use std::{thread, time};
 use docopt::Docopt;
 use failure::{format_err, Error};
 
-use geometry::Point;
+use geometry::{BoundingBox, Direction, Point};
 
 use carts::Direction as CDirection;
 use carts::{Layout, LayoutComplete, LayoutError};
 
-use cursive::event::{Event, EventResult, Key};
 use cursive::theme::ColorStyle;
 use cursive::traits::*;
-use cursive::vec::Vec2;
 use cursive::view::Selector;
 use cursive::views::LinearLayout;
 use cursive::{Cursive, Printer};
+use cursive_aoc_views::{Map, MapView, MessageView};
 
 const USAGE: &str = "
 Advent of Code 2018 - Elf Cart Visualizer.
@@ -82,8 +74,14 @@ fn build_ui(
 
     let mut boxes = LinearLayout::vertical();
 
+    // let wait = time::Duration::from_millis(50);
+
     boxes.add_child(MessageView::new(rx_message).fixed_height(1));
-    boxes.add_child(LayoutView::new(rx_layout).full_screen().with_id("layout"));
+    boxes.add_child(
+        MapView::new(rx_layout, ViewableLayout::new(Layout::new()))
+            .full_screen()
+            .with_id("layout"),
+    );
 
     siv.add_layer(boxes.full_screen());
     siv.focus(&Selector::Id("layout")).unwrap();
@@ -120,118 +118,37 @@ fn run() -> Result<(), Error> {
     Ok(())
 }
 
-struct Offset {
-    left: isize,
-    top: isize,
-}
-
-impl Offset {
-    fn nudge(&mut self, left: isize, top: isize) {
-        self.left = self.left.saturating_add(left);
-        self.top = self.top.saturating_add(top);
-    }
-}
-
-struct LayoutView {
+#[derive(Debug)]
+struct ViewableLayout {
     layout: Layout,
-    offset: Offset,
-    // Receiving end of the stream
-    rx: mpsc::Receiver<Layout>,
+    carts: HashMap<Point, Direction>,
 }
 
-impl LayoutView {
-    fn new(rx: mpsc::Receiver<Layout>) -> Self {
-        LayoutView {
-            rx: rx,
-            offset: Offset { left: 0, top: 0 },
-            layout: Layout::new(),
-        }
-    }
-
-    // Reads available data from the stream into the buffer
-    fn update(&mut self) {
-        // Add each available line to the end of the buffer.
-        while let Ok(layout) = self.rx.try_recv() {
-            self.layout = layout;
-        }
+impl ViewableLayout {
+    fn new(layout: Layout) -> Self {
+        let carts = layout.cart_mapping();
+        Self { layout, carts }
     }
 }
 
-impl View for LayoutView {
-    fn layout(&mut self, _: Vec2) {
-        // Before drawing, we'll want to update the buffer
-        self.update();
-    }
-
-    fn on_event(&mut self, event: Event) -> EventResult {
-        // Each line will be a debug-format of the event.
-
-        match event {
-            Event::Key(Key::Up) => self.offset.nudge(0, -1),
-            Event::Key(Key::Down) => self.offset.nudge(0, 1),
-            Event::Key(Key::Left) => self.offset.nudge(-1, 0),
-            Event::Key(Key::Right) => self.offset.nudge(1, 0),
-            _ => return EventResult::Ignored,
-        }
-
-        EventResult::Consumed(None)
-    }
-
-    fn draw(&self, printer: &Printer) {
-        // Print the end of the buffer
-
-        let top = i32::try_from(self.offset.top).unwrap_or(0);
-        let left = i32::try_from(self.offset.left).unwrap_or(0);
-
-        let bbox = self.layout.bbox();
-        let carts = self.layout.cart_mapping();
-
-        for (j, y) in (top..bbox.height()).enumerate() {
-            for (i, x) in (left..bbox.width()).enumerate() {
-                let point = Point::new(x, y);
-
-                if let Some(direction) = carts.get(&point) {
-                    printer.with_color(ColorStyle::secondary(), |p| {
-                        p.print((i, j), &CDirection::from(*direction).to_string())
-                    });
-                } else if let Some(track) = self.layout.get_track(&point) {
-                    printer.print((i, j), &track.to_string());
-                }
-            }
-        }
-    }
-}
-
-struct MessageView {
-    message: String,
-    rx: mpsc::Receiver<String>,
-}
-
-impl MessageView {
-    fn new(rx: mpsc::Receiver<String>) -> Self {
-        Self {
-            message: String::new(),
-            rx: rx,
+impl Map<Layout> for ViewableLayout {
+    fn display(&self, printer: &Printer, point: Point) {
+        if let Some(direction) = self.carts.get(&point) {
+            printer.with_color(ColorStyle::secondary(), |p| {
+                p.print((0, 0), &CDirection::from(*direction).to_string())
+            });
+        } else if let Some(track) = self.layout.get_track(&point) {
+            printer.print((0, 0), &track.to_string());
         }
     }
 
-    fn update(&mut self) {
-        // Add each available line to the end of the buffer.
-        while let Ok(message) = self.rx.try_recv() {
-            self.message = message;
-        }
-    }
-}
-
-impl View for MessageView {
-    fn layout(&mut self, _: Vec2) {
-        // Before drawing, we'll want to update the buffer
-        self.update();
+    fn bbox(&self) -> BoundingBox {
+        self.layout.bbox()
     }
 
-    fn draw(&self, printer: &Printer) {
-        // Print the end of the buffer
-        printer.print((0, 0), &self.message);
+    fn update(&mut self, item: &Layout) {
+        self.layout = item.clone();
+        self.carts = self.layout.cart_mapping();
     }
 }
 

@@ -14,6 +14,7 @@ path = "src/main.rs"
 carts = { path = "carts" }
 goblinwars = { path = "goblinwars" }
 geometry = { path = "geometry" }
+waterfall = { path = "waterfall" }
 docopt = "1"
 serde = "1.0"
 serde_derive = "1.0"

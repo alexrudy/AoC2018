@@ -1,0 +1,10 @@
+[package]
+name = "cursive_aoc_views"
+version = "0.1.0"
+authors = ["Alex Rudy <alex.rudy@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+cursive = "*"
+failure = "0.1"
+geometry = { path = "../geometry/" }
