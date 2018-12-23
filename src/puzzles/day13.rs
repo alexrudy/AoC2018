@@ -34,7 +34,7 @@ pub(crate) fn main() -> Result<()> {
 mod tests {
     use super::*;
 
-    use carts::Point;
+    use geometry::Point;
 
     #[test]
     fn example_part1() {

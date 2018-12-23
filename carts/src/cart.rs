@@ -2,8 +2,9 @@ use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;
 
+use geometry::{Direction, Point};
+
 use crate::layout::Track;
-use crate::point::{Direction, Point};
 
 #[derive(Debug, PartialEq)]
 pub enum CartError {
@@ -131,7 +132,7 @@ impl Cart {
 
     pub(crate) fn advance(&mut self, track: Track) -> Result<(), CartAdvanceError> {
         self.direction = self.direction(track)?;
-        self.position = self.position.advance(self.direction);
+        self.position = self.position.step(self.direction);
 
         Ok(())
     }

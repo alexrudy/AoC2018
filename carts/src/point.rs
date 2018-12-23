@@ -1,170 +1,61 @@
-use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-pub(crate) type Position = i32;
+use failure::Fail;
 
-macro_rules! err {
-    ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
-}
-
-type ParseResult<T> = Result<T, Box<Error>>;
+use geometry;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
+pub struct Direction(geometry::Direction);
+
+impl From<geometry::Direction> for Direction {
+    fn from(d: geometry::Direction) -> Direction {
+        Direction(d)
+    }
+}
+
+impl From<Direction> for geometry::Direction {
+    fn from(d: Direction) -> Self {
+        d.0
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum DirectionParseError {
+    #[fail(display = "Wrong size direction sprite: {}", _0)]
+    WrongSize(String),
+
+    #[fail(display = "Unknown direction sprite: {}", _0)]
+    UnkownCharacter(String),
 }
 
 impl FromStr for Direction {
-    type Err = Box<Error>;
+    type Err = DirectionParseError;
 
-    fn from_str(s: &str) -> ParseResult<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() != 1 {
-            return err!("Wrong size direction string");
+            return Err(DirectionParseError::WrongSize(s.to_owned()));
         }
 
         match s.chars().nth(0).unwrap() {
-            '^' => Ok(Direction::Up),
-            '>' => Ok(Direction::Right),
-            '<' => Ok(Direction::Left),
-            'v' => Ok(Direction::Down),
-            c => err!("Unknown direction: {}", c),
+            '^' => Ok(geometry::Direction::Up.into()),
+            '>' => Ok(geometry::Direction::Right.into()),
+            '<' => Ok(geometry::Direction::Left.into()),
+            'v' => Ok(geometry::Direction::Down.into()),
+            _ => Err(DirectionParseError::UnkownCharacter(s.to_owned())),
         }
     }
 }
 
 impl fmt::Display for Direction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let c = match self {
-            Direction::Up => '^',
-            Direction::Right => '>',
-            Direction::Left => '<',
-            Direction::Down => 'v',
+        let c = match self.0 {
+            geometry::Direction::Up => '^',
+            geometry::Direction::Right => '>',
+            geometry::Direction::Left => '<',
+            geometry::Direction::Down => 'v',
         };
         write!(f, "{}", c)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct Point {
-    pub x: Position,
-    pub y: Position,
-}
-
-impl Point {
-    pub fn new(x: Position, y: Position) -> Self {
-        Self { x, y }
-    }
-
-    fn up(self) -> Self {
-        Self {
-            x: self.x,
-            y: self.y - 1,
-        }
-    }
-
-    fn down(self) -> Self {
-        Self {
-            x: self.x,
-            y: self.y + 1,
-        }
-    }
-
-    fn left(self) -> Self {
-        Self {
-            x: self.x - 1,
-            y: self.y,
-        }
-    }
-
-    fn right(self) -> Self {
-        Self {
-            x: self.x + 1,
-            y: self.y,
-        }
-    }
-
-    pub(crate) fn advance(self, direction: Direction) -> Self {
-        match direction {
-            Direction::Left => self.left(),
-            Direction::Right => self.right(),
-            Direction::Up => self.up(),
-            Direction::Down => self.down(),
-        }
-    }
-}
-
-impl fmt::Display for Point {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{}", self.x, self.y)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BBox {
-    left: Position,
-    right: Position,
-    top: Position,
-    bottom: Position,
-}
-
-impl BBox {
-    pub fn empty() -> Self {
-        Self {
-            left: Position::max_value(),
-            right: Position::min_value(),
-            top: Position::max_value(),
-            bottom: Position::min_value(),
-        }
-    }
-
-    pub fn include(&mut self, point: Point) {
-        if point.x < self.left {
-            self.left = point.x;
-        }
-        if point.x > self.right {
-            self.right = point.x;
-        }
-        if point.y < self.top {
-            self.top = point.y;
-        }
-        if point.y > self.bottom {
-            self.bottom = point.y;
-        }
-    }
-
-    pub fn contains(&self, point: Point) -> bool {
-        (point.x >= self.left)
-            && (point.x <= self.right)
-            && (point.y >= self.top)
-            && (point.y <= self.bottom)
-    }
-
-    pub fn width(&self) -> Position {
-        self.right.saturating_sub(self.left) + 1
-    }
-
-    pub fn height(&self) -> Position {
-        self.bottom.saturating_sub(self.top) + 1
-    }
-
-    pub fn left(&self) -> Position {
-        self.left
-    }
-
-    pub fn right(&self) -> Position {
-        self.right
-    }
-
-    pub fn top(&self) -> Position {
-        self.top
-    }
-
-    pub fn bottom(&self) -> Position {
-        self.bottom
     }
 }
 
@@ -172,43 +63,57 @@ impl BBox {
 mod tests {
     use super::*;
 
+    use geometry::Point;
+
     #[test]
     fn direction() {
         //Parse successfully
-        assert_eq!("^".parse::<Direction>().unwrap(), Direction::Up);
-        assert_eq!(">".parse::<Direction>().unwrap(), Direction::Right);
-        assert_eq!("<".parse::<Direction>().unwrap(), Direction::Left);
-        assert_eq!("v".parse::<Direction>().unwrap(), Direction::Down);
+        assert_eq!(
+            "^".parse::<Direction>().unwrap(),
+            geometry::Direction::Up.into()
+        );
+        assert_eq!(
+            ">".parse::<Direction>().unwrap(),
+            geometry::Direction::Right.into()
+        );
+        assert_eq!(
+            "<".parse::<Direction>().unwrap(),
+            geometry::Direction::Left.into()
+        );
+        assert_eq!(
+            "v".parse::<Direction>().unwrap(),
+            geometry::Direction::Down.into()
+        );
 
         //Parse failures
         assert_eq!(
             &"".parse::<Direction>().unwrap_err().to_string(),
-            "Wrong size direction string"
+            "Wrong size direction sprite: "
         );
         assert_eq!(
             &"abc".parse::<Direction>().unwrap_err().to_string(),
-            "Wrong size direction string"
+            "Wrong size direction sprite: abc"
         );
         assert_eq!(
             &"a".parse::<Direction>().unwrap_err().to_string(),
-            "Unknown direction: a"
+            "Unknown direction sprite: a"
         );
 
         //Display
-        assert_eq!(Direction::Up.to_string(), "^");
-        assert_eq!(Direction::Down.to_string(), "v");
-        assert_eq!(Direction::Left.to_string(), "<");
-        assert_eq!(Direction::Right.to_string(), ">");
+        assert_eq!(Direction::from(geometry::Direction::Up).to_string(), "^");
+        assert_eq!(Direction::from(geometry::Direction::Down).to_string(), "v");
+        assert_eq!(Direction::from(geometry::Direction::Left).to_string(), "<");
+        assert_eq!(Direction::from(geometry::Direction::Right).to_string(), ">");
     }
 
     #[test]
     fn point() {
         let point = Point::new(1, 1);
 
-        assert_eq!(point.advance(Direction::Up), Point::new(1, 0));
-        assert_eq!(point.advance(Direction::Down), Point::new(1, 2));
-        assert_eq!(point.advance(Direction::Left), Point::new(0, 1));
-        assert_eq!(point.advance(Direction::Right), Point::new(2, 1));
+        assert_eq!(point.step(geometry::Direction::Up), Point::new(1, 0));
+        assert_eq!(point.step(geometry::Direction::Down), Point::new(1, 2));
+        assert_eq!(point.step(geometry::Direction::Left), Point::new(0, 1));
+        assert_eq!(point.step(geometry::Direction::Right), Point::new(2, 1));
 
         assert_eq!(&point.to_string(), "1,1");
     }

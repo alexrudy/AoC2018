@@ -7,10 +7,12 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::str::FromStr;
 
+use geometry::{BoundingBox, Direction, Point};
+
 type ParseResult<T> = Result<T, Box<Error>>;
 
 use crate::cart::{Cart, CartError};
-use crate::point::{BBox, Direction, Point};
+use crate::point::Direction as CDirection;
 
 macro_rules! err {
     ($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
@@ -132,8 +134,8 @@ impl Layout {
         }
     }
 
-    pub fn bbox(&self) -> BBox {
-        let mut bbox = BBox::empty();
+    pub fn bbox(&self) -> BoundingBox {
+        let mut bbox = BoundingBox::empty();
         for point in self.track.keys() {
             bbox.include(*point);
         }
@@ -282,8 +284,9 @@ impl FromStr for Element {
         match s.parse::<Track>() {
             Ok(t) => Ok(Element::Track(t)),
             Err(_) => Ok(Element::Cart(
-                s.parse::<Direction>()
-                    .or_else(|_| err!("Unknown track or cart: {}", s))?,
+                s.parse::<CDirection>()
+                    .or_else(|_| err!("Unknown track or cart: {}", s))?
+                    .into(),
             )),
         }
     }
@@ -325,7 +328,7 @@ impl fmt::Display for Layout {
             for x in 0..bbox.width() {
                 let point = Point::new(x, y);
 
-                if let Some(direction) = carts.get(&point) {
+                if let Some(direction) = carts.get(&point).map(|&d| CDirection::from(d)) {
                     write!(f, "{}", direction)?;
                 } else if let Some(track) = self.track.get(&point) {
                     write!(f, "{}", track)?;
@@ -393,7 +396,13 @@ mod test {
     #[test]
     fn collision_removes_both() {
         let mut layout = Layout::from_str(example_layout_file!("test_collision")).unwrap();
-        assert_eq!(layout.tick(), Err(LayoutError::LastCollision(Point::new(3, 0), Point::new(5, 2))));
+        assert_eq!(
+            layout.tick(),
+            Err(LayoutError::LastCollision(
+                Point::new(3, 0),
+                Point::new(5, 2)
+            ))
+        );
 
         assert_eq!(layout.carts.len(), 1);
     }

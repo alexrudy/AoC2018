@@ -20,7 +20,10 @@ use std::{thread, time};
 
 use docopt::Docopt;
 
-use carts::{Layout, LayoutComplete, LayoutError, Point};
+use geometry::Point;
+
+use carts::Direction as CDirection;
+use carts::{Layout, LayoutComplete, LayoutError};
 
 use cursive::event::{Event, EventResult, Key};
 use cursive::theme::ColorStyle;
@@ -189,7 +192,7 @@ impl View for LayoutView {
 
                 if let Some(direction) = carts.get(&point) {
                     printer.with_color(ColorStyle::secondary(), |p| {
-                        p.print((i, j), &direction.to_string())
+                        p.print((i, j), &CDirection::from(*direction).to_string())
                     });
                 } else if let Some(track) = self.layout.get_track(&point) {
                     printer.print((i, j), &track.to_string());
