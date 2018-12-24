@@ -1,12 +1,13 @@
-#![allow(dead_code)]
-
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
 use failure::{Error, Fail};
-use itertools::Itertools;
+
+use crate::elfcode::{
+    Instruction, Opcode, Register, RegisterConstructionError, RegisterError, Value,
+};
 
 pub(crate) fn main() -> Result<(), Error> {
     use crate::input_to_string;
@@ -28,7 +29,7 @@ pub(crate) fn main() -> Result<(), Error> {
         .map(|i| decoder.decode(i))
         .collect();
 
-    let state = Register::new();
+    let state = Register::new(4);
     let outcome = processor(state, &test_program)?;
     println!("Part 2: {}", outcome.get(0)?);
 
@@ -75,16 +76,75 @@ fn samples_and_program(s: &str) -> Result<(Vec<Sample>, Vec<RawInstruction>), Pa
     Ok((samples, instructions))
 }
 
-type Value = i32;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RawInstruction {
+    opcode: Value,
+    input_a: Value,
+    input_b: Value,
+    output: Value,
+}
 
-#[derive(Debug, Fail)]
-enum RegisterError {
-    #[fail(display = "Invalid Address: {}", _0)]
-    InvalidAddress(Value),
+impl RawInstruction {
+    fn convert(&self, opcode: Opcode) -> Instruction {
+        Instruction::new(opcode, self.input_a, self.input_b, self.output)
+    }
+}
+
+impl fmt::Display for RawInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {} {} {}",
+            self.opcode, self.input_a, self.input_b, self.output
+        )
+    }
 }
 
 #[derive(Debug, Fail)]
-enum ParseRegisterError {
+enum ParseRawInstructionError {
+    #[fail(display = "Invalid Value: {}", _0)]
+    InvalidValue(ParseIntError),
+
+    #[fail(display = "Invalid Opcode: {}", _0)]
+    InvalidOpcode(Value),
+}
+
+impl From<ParseIntError> for ParseRawInstructionError {
+    fn from(error: ParseIntError) -> Self {
+        ParseRawInstructionError::InvalidValue(error)
+    }
+}
+
+impl FromStr for RawInstruction {
+    type Err = ParseRawInstructionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let values: Vec<Value> = s
+            .trim()
+            .split_whitespace()
+            .map(|i| i.trim().parse::<Value>())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let opcode = values[0];
+        if opcode > 16 || opcode < 0 {
+            return Err(ParseRawInstructionError::InvalidOpcode(opcode));
+        }
+
+        let a = values[1];
+        let b = values[2];
+        let c = values[3];
+
+        Ok(RawInstruction {
+            opcode: opcode,
+            input_a: a,
+            input_b: b,
+            output: c,
+        })
+    }
+}
+
+#[derive(Debug, Fail)]
+pub(crate) enum ParseRegisterError {
     #[fail(display = "Not enough register values provided")]
     NotEnoughValues,
 
@@ -95,61 +155,18 @@ enum ParseRegisterError {
     InvalidValue(ParseIntError),
 }
 
+impl From<RegisterConstructionError> for ParseRegisterError {
+    fn from(error: RegisterConstructionError) -> Self {
+        match error {
+            RegisterConstructionError::TooManyValues => ParseRegisterError::TooManyValues,
+            RegisterConstructionError::NotEnoughValues => ParseRegisterError::NotEnoughValues,
+        }
+    }
+}
+
 impl From<ParseIntError> for ParseRegisterError {
     fn from(error: ParseIntError) -> Self {
         ParseRegisterError::InvalidValue(error)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Register {
-    memory: [Value; 4],
-}
-
-impl Register {
-    fn new() -> Self {
-        Self { memory: [0; 4] }
-    }
-
-    fn from_slice(values: &[Value]) -> Result<Self, ParseRegisterError> {
-        if values.len() < 4 {
-            return Err(ParseRegisterError::NotEnoughValues);
-        } else if values.len() > 4 {
-            return Err(ParseRegisterError::TooManyValues);
-        }
-
-        let mut register = Self::new();
-        for (i, v) in values.iter().take(4).enumerate() {
-            register.memory[i] = *v;
-        }
-
-        Ok(register)
-    }
-
-    fn store(&mut self, address: Value, value: Value) -> Result<(), RegisterError> {
-        if address < 0 || address > 3 {
-            return Err(RegisterError::InvalidAddress(address));
-        }
-
-        self.memory[address as usize] = value;
-        Ok(())
-    }
-
-    fn get(&self, address: Value) -> Result<Value, RegisterError> {
-        if address < 0 || address > 3 {
-            return Err(RegisterError::InvalidAddress(address));
-        }
-        Ok(self.memory[address as usize])
-    }
-}
-
-impl fmt::Display for Register {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "[{}]",
-            (&self.memory).iter().map(|v| v.to_string()).join(",")
-        )
     }
 }
 
@@ -166,232 +183,7 @@ impl FromStr for Register {
             .map(|i| i.trim().parse::<Value>())
             .collect::<Result<Vec<_>, _>>()?;
 
-        Self::from_slice(&values)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct RawInstruction {
-    opcode: Value,
-    input_a: Value,
-    input_b: Value,
-    output: Value,
-}
-
-impl RawInstruction {
-    fn convert(&self, opcode: Opcode) -> Instruction {
-        Instruction {
-            opcode: opcode,
-            input_a: self.input_a,
-            input_b: self.input_b,
-            output: self.output,
-        }
-    }
-}
-
-impl fmt::Display for RawInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {} {} {}",
-            self.opcode, self.input_a, self.input_b, self.output
-        )
-    }
-}
-
-#[derive(Debug, Fail)]
-enum ParseInstructionError {
-    #[fail(display = "Not enough register values provided")]
-    NotEnoughValues,
-
-    #[fail(display = "Too many register values provided")]
-    TooManyValues,
-
-    #[fail(display = "Invalid Value: {}", _0)]
-    InvalidValue(ParseIntError),
-
-    #[fail(display = "Invalid Opcode: {}", _0)]
-    InvalidOpcode(Value),
-}
-
-impl From<ParseIntError> for ParseInstructionError {
-    fn from(error: ParseIntError) -> Self {
-        ParseInstructionError::InvalidValue(error)
-    }
-}
-
-impl FromStr for RawInstruction {
-    type Err = ParseInstructionError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let values: Vec<Value> = s
-            .trim()
-            .split_whitespace()
-            .map(|i| i.trim().parse::<Value>())
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let opcode = values[0];
-        if opcode > 16 || opcode < 0 {
-            return Err(ParseInstructionError::InvalidOpcode(opcode));
-        }
-
-        let a = values[1];
-        let b = values[2];
-        let c = values[3];
-
-        Ok(RawInstruction {
-            opcode: opcode,
-            input_a: a,
-            input_b: b,
-            output: c,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Opcode {
-    Addr,
-    Addi,
-    Mulr,
-    Muli,
-    Banr,
-    Bani,
-    Borr,
-    Bori,
-    Setr,
-    Seti,
-    Gtir,
-    Gtri,
-    Gtrr,
-    Eqir,
-    Eqri,
-    Eqrr,
-}
-
-impl Opcode {
-    fn next(self) -> Option<Self> {
-        match self {
-            Opcode::Addr => Some(Opcode::Addi),
-            Opcode::Addi => Some(Opcode::Mulr),
-            Opcode::Mulr => Some(Opcode::Muli),
-            Opcode::Muli => Some(Opcode::Banr),
-            Opcode::Banr => Some(Opcode::Bani),
-            Opcode::Bani => Some(Opcode::Borr),
-            Opcode::Borr => Some(Opcode::Bori),
-            Opcode::Bori => Some(Opcode::Setr),
-            Opcode::Setr => Some(Opcode::Seti),
-            Opcode::Seti => Some(Opcode::Gtir),
-            Opcode::Gtir => Some(Opcode::Gtri),
-            Opcode::Gtri => Some(Opcode::Gtrr),
-            Opcode::Gtrr => Some(Opcode::Eqir),
-            Opcode::Eqir => Some(Opcode::Eqri),
-            Opcode::Eqri => Some(Opcode::Eqrr),
-            Opcode::Eqrr => None,
-        }
-    }
-
-    fn all() -> Vec<Opcode> {
-        let mut opcodes = Vec::new();
-
-        let mut oc = Opcode::Addr;
-
-        loop {
-            opcodes.push(oc);
-
-            let noc = oc.next();
-            if noc.is_none() {
-                break;
-            }
-            oc = noc.unwrap();
-        }
-        opcodes
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Instruction {
-    opcode: Opcode,
-    input_a: Value,
-    input_b: Value,
-    output: Value,
-}
-
-fn gt(a: Value, b: Value) -> Value {
-    if a > b {
-        1
-    } else {
-        0
-    }
-}
-
-fn eq(a: Value, b: Value) -> Value {
-    if a == b {
-        1
-    } else {
-        0
-    }
-}
-
-impl Instruction {
-    fn rr<F>(&self, mut register: Register, f: F) -> Result<Register, RegisterError>
-    where
-        F: FnOnce(Value, Value) -> Value,
-    {
-        let a = register.get(self.input_a)?;
-        let b = register.get(self.input_b)?;
-        register.store(self.output, f(a, b))?;
-        Ok(register)
-    }
-
-    fn ri<F>(&self, mut register: Register, f: F) -> Result<Register, RegisterError>
-    where
-        F: FnOnce(Value, Value) -> Value,
-    {
-        let a = register.get(self.input_a)?;
-        let b = self.input_b;
-        register.store(self.output, f(a, b))?;
-        Ok(register)
-    }
-
-    fn ii<F>(&self, mut register: Register, f: F) -> Result<Register, RegisterError>
-    where
-        F: FnOnce(Value, Value) -> Value,
-    {
-        let a = self.input_a;
-        let b = self.input_b;
-        register.store(self.output, f(a, b))?;
-        Ok(register)
-    }
-
-    fn ir<F>(&self, mut register: Register, f: F) -> Result<Register, RegisterError>
-    where
-        F: FnOnce(Value, Value) -> Value,
-    {
-        let a = self.input_a;
-        let b = register.get(self.input_b)?;
-        register.store(self.output, f(a, b))?;
-        Ok(register)
-    }
-
-    fn process(&self, register: Register) -> Result<Register, RegisterError> {
-        match self.opcode {
-            Opcode::Addr => self.rr(register, |a, b| a + b),
-            Opcode::Addi => self.ri(register, |a, b| a + b),
-            Opcode::Mulr => self.rr(register, |a, b| a * b),
-            Opcode::Muli => self.ri(register, |a, b| a * b),
-            Opcode::Banr => self.rr(register, |a, b| a & b),
-            Opcode::Bani => self.ri(register, |a, b| a & b),
-            Opcode::Borr => self.rr(register, |a, b| a | b),
-            Opcode::Bori => self.ri(register, |a, b| a | b),
-            Opcode::Setr => self.rr(register, |a, _| a),
-            Opcode::Seti => self.ii(register, |a, _| a),
-            Opcode::Gtir => self.ir(register, gt),
-            Opcode::Gtri => self.ri(register, gt),
-            Opcode::Gtrr => self.rr(register, gt),
-            Opcode::Eqir => self.ir(register, eq),
-            Opcode::Eqri => self.ri(register, eq),
-            Opcode::Eqrr => self.rr(register, eq),
-        }
+        Ok(Self::from(values))
     }
 }
 
@@ -406,8 +198,9 @@ impl Sample {
     fn evaluate(&self, opcode: Opcode) -> bool {
         let instruction = self.instruction.convert(opcode);
 
-        match instruction.process(self.before) {
-            Ok(register) => register == self.after,
+        let mut register = self.before.clone();
+        match instruction.process(&mut register) {
+            Ok(()) => register == self.after,
             Err(_) => false,
         }
     }
@@ -443,7 +236,7 @@ enum ParseSampleError {
     MissingInstruction(String),
 
     #[fail(display = "Instruction Error: {}", _0)]
-    Instruction(ParseInstructionError),
+    Instruction(ParseRawInstructionError),
 
     #[fail(display = "No after sample found: {}", _0)]
     MissingAfter(String),
@@ -455,8 +248,8 @@ impl From<ParseRegisterError> for ParseSampleError {
     }
 }
 
-impl From<ParseInstructionError> for ParseSampleError {
-    fn from(error: ParseInstructionError) -> Self {
+impl From<ParseRawInstructionError> for ParseSampleError {
+    fn from(error: ParseRawInstructionError) -> Self {
         ParseSampleError::Instruction(error)
     }
 }
@@ -588,7 +381,7 @@ impl Decoder {
 fn processor(init: Register, instructions: &[Instruction]) -> Result<Register, RegisterError> {
     let mut state = init;
     for step in instructions {
-        state = step.process(state)?;
+        step.process(&mut state)?;
     }
     Ok(state)
 }
@@ -597,24 +390,6 @@ fn processor(init: Register, instructions: &[Instruction]) -> Result<Register, R
 mod test {
 
     use super::*;
-
-    #[test]
-    fn all_opcodes() {
-        let opcodes = Opcode::all();
-        assert_eq!(opcodes.len(), 16);
-    }
-
-    #[test]
-    fn register() {
-        let register = Register::from_slice(&[3, 2, 1, 0]).unwrap();
-
-        assert_eq!(
-            register,
-            Register {
-                memory: [3, 2, 1, 0]
-            }
-        );
-    }
 
     #[test]
     fn example_part1() {
@@ -636,14 +411,49 @@ After:  [3, 2, 2, 1]"
 
     #[test]
     fn operations() {
-        let register = Register::from_slice(&[3, 0, 0, 2]).unwrap();
+        let mut register = Register::from(vec![3, 0, 0, 2]);
         let instruction: RawInstruction = "12 2 3 2".parse().unwrap();
 
-        let outcome = Register::from_slice(&[3, 0, 1, 2]).unwrap();
+        let outcome = Register::from(vec![3, 0, 1, 2]);
+
+        instruction
+            .convert(Opcode::Eqir)
+            .process(&mut register)
+            .unwrap();
+
+        assert_eq!(register, outcome);
+    }
+
+    fn puzzle_input() -> (Vec<Sample>, Vec<RawInstruction>) {
+        use crate::input_to_string;
+        let s = input_to_string(16).unwrap();
+        samples_and_program(&s).unwrap()
+    }
+
+    #[test]
+    fn answer_part1() {
+        let (samples, _) = puzzle_input();
         assert_eq!(
-            instruction.convert(Opcode::Eqir).process(register).unwrap(),
-            outcome
+            samples.iter().filter(|s| s.identify().len() >= 3).count(),
+            596
         );
+    }
+
+    #[test]
+    fn answer_part2() {
+        let (samples, test_program) = puzzle_input();
+        let mut decoder = Decoder::new();
+        decoder.discover(&samples).unwrap();
+
+        let test_program: Vec<_> = test_program
+            .into_iter()
+            .map(|i| decoder.decode(i))
+            .collect();
+
+        let state = Register::new(4);
+        let outcome = processor(state, &test_program).unwrap();
+
+        assert_eq!(outcome.get(0).unwrap(), 554);
     }
 
 }

@@ -1,4 +1,5 @@
 #![macro_use]
+#![feature(try_from)]
 
 use failure::Error;
 
@@ -9,6 +10,7 @@ use serde_derive::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
 
+mod elfcode;
 mod puzzles;
 
 const USAGE: &str = "
