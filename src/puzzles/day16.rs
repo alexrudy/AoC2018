@@ -5,9 +5,7 @@ use std::str::FromStr;
 
 use failure::{Error, Fail};
 
-use crate::elfcode::{
-    Instruction, Opcode, Register, RegisterConstructionError, RegisterError, Value,
-};
+use crate::elfcode::{Instruction, Opcode, Register, RegisterError, Value};
 
 pub(crate) fn main() -> Result<(), Error> {
     use crate::input_to_string;
@@ -145,23 +143,8 @@ impl FromStr for RawInstruction {
 
 #[derive(Debug, Fail)]
 pub(crate) enum ParseRegisterError {
-    #[fail(display = "Not enough register values provided")]
-    NotEnoughValues,
-
-    #[fail(display = "Too many register values provided")]
-    TooManyValues,
-
     #[fail(display = "Invalid Value: {}", _0)]
     InvalidValue(ParseIntError),
-}
-
-impl From<RegisterConstructionError> for ParseRegisterError {
-    fn from(error: RegisterConstructionError) -> Self {
-        match error {
-            RegisterConstructionError::TooManyValues => ParseRegisterError::TooManyValues,
-            RegisterConstructionError::NotEnoughValues => ParseRegisterError::NotEnoughValues,
-        }
-    }
 }
 
 impl From<ParseIntError> for ParseRegisterError {

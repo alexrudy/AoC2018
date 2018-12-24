@@ -75,6 +75,7 @@ fn main() -> Result<(), Error> {
         day!(day16),
         day!(day17),
         day!(day18),
+        day!(day19),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {

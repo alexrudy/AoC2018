@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 use failure::Fail;
 use itertools::Itertools;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 pub(crate) type Value = i32;
 
@@ -14,22 +16,13 @@ pub(crate) enum RegisterError {
     InvalidAddress(Value),
 
     #[fail(display = "Invalid Value")]
-    InvalidValue
+    InvalidValue,
 }
 
 impl From<TryFromIntError> for RegisterError {
-    fn from(error: TryFromIntError) -> Self {
+    fn from(_error: TryFromIntError) -> Self {
         RegisterError::InvalidValue
     }
-}
-
-#[derive(Debug, Fail)]
-pub(crate) enum RegisterConstructionError {
-    #[fail(display = "Can't construct register, not enough values")]
-    NotEnoughValues,
-
-    #[fail(display = "Can't construct register, too many values")]
-    TooManyValues,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -315,6 +308,27 @@ impl FromStr for Instruction {
     }
 }
 
+#[derive(Debug, Fail)]
+pub(crate) enum ProgramError {
+    #[fail(display = "Register error: {}", _0)]
+    Register(#[cause] RegisterError),
+
+    #[fail(display = "Program halted")]
+    Halted,
+}
+
+impl From<RegisterError> for ProgramError {
+    fn from(error: RegisterError) -> Self {
+        ProgramError::Register(error)
+    }
+}
+
+impl From<TryFromIntError> for ProgramError {
+    fn from(error: TryFromIntError) -> Self {
+        ProgramError::Register(RegisterError::from(error))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Processor {
     commands: Vec<Instruction>,
@@ -335,15 +349,75 @@ impl Processor {
         }
     }
 
-    pub(crate) fn step(&mut self) -> Result<(), RegisterError> {
-        let ip = self.register.get(self.instruction_pointer)?;
-        let instruction = self.commands[usize::try_from(ip)?];
+    pub(crate) fn step(&mut self) -> Result<(), ProgramError> {
+        let ip = usize::try_from(self.register.get(self.instruction_pointer)?)?;
+
+        if ip >= self.commands.len() {
+            return Err(ProgramError::Halted);
+        }
+
+        let instruction = self.commands[ip];
         instruction.process(&mut self.register)?;
         self.register.store(
             self.instruction_pointer,
             self.register.get(self.instruction_pointer)? + 1,
-        );
+        )?;
         Ok(())
+    }
+
+    pub(crate) fn run(&mut self) -> Process {
+        Process { processor: self }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct Process<'p> {
+    processor: &'p mut Processor,
+}
+
+impl<'p> Iterator for Process<'p> {
+    type Item = Register;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.processor.step().is_err() {
+            return None;
+        }
+        Some(self.processor.register.clone())
+    }
+}
+
+pub(crate) struct InstructionPointer(Value);
+
+#[derive(Debug, Fail)]
+pub(crate) enum ParseIPError {
+    #[fail(display = "Invalid Number: {}", _0)]
+    InvalidNumber(String),
+
+    #[fail(display = "Invalid Pattern: {}", _0)]
+    InvalidPattern(String),
+}
+
+impl From<InstructionPointer> for Value {
+    fn from(ip: InstructionPointer) -> Self {
+        ip.0
+    }
+}
+
+impl FromStr for InstructionPointer {
+    type Err = ParseIPError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"#ip (\d+)").unwrap();
+        }
+        match RE.captures(s) {
+            Some(c) => {
+                Ok(InstructionPointer(c[1].parse::<Value>().map_err(|_| {
+                    ParseIPError::InvalidNumber(c[1].to_string())
+                })?))
+            }
+            None => Err(ParseIPError::InvalidPattern(s.to_string())),
+        }
     }
 }
 
