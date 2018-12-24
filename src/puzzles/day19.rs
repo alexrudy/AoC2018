@@ -1,6 +1,7 @@
 use failure::{format_err, Error};
 use std::io::prelude::*;
 
+use crate::elfcode::decompile::decompile;
 use crate::elfcode::{Instruction, InstructionPointer, Processor};
 
 pub(crate) fn main() -> Result<(), Error> {
@@ -21,7 +22,7 @@ pub(crate) fn main() -> Result<(), Error> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut processor = Processor::new(program, 6, ip.into());
+    let mut processor = Processor::new(program.clone(), 6, ip.into());
 
     let r = processor
         .run()
@@ -29,6 +30,8 @@ pub(crate) fn main() -> Result<(), Error> {
         .ok_or_else(|| format_err!("No steps ran!"))?;
 
     println!("Part 1: {}", r.get(0)?);
+
+    eprintln!("{}", decompile(program, ip.into()));
 
     Ok(())
 }

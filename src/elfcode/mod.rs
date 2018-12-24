@@ -8,6 +8,8 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+pub(crate) mod decompile;
+
 pub(crate) type Value = i32;
 
 #[derive(Debug, Fail)]
@@ -386,6 +388,7 @@ impl<'p> Iterator for Process<'p> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct InstructionPointer(Value);
 
 #[derive(Debug, Fail)]
