@@ -10,7 +10,7 @@ fn parse_frequencies(s: &str) -> Result<i32> {
     s.trim().trim_start_matches('+').parse::<i32>()
 }
 
-pub(crate) fn calibrate_frequncy<T>(data: T) -> Result<i32>
+fn calibrate_frequncy<T>(data: T) -> Result<i32>
 where
     T: Iterator<Item = Result<i32>>,
 {
@@ -21,7 +21,7 @@ where
     Ok(frequency)
 }
 
-pub(crate) fn repeated_frequency<T>(data: T) -> Result<i32>
+fn repeated_frequency<T>(data: T) -> Result<i32>
 where
     T: Iterator<Item = Result<i32>>,
 {
@@ -41,14 +41,14 @@ where
     }
 }
 
-pub(crate) fn part1() -> ::std::result::Result<i32, Error> {
+fn part1() -> ::std::result::Result<i32, Error> {
     use crate::input;
 
     let answer = calibrate_frequncy(input(1)?.lines().map(|l| parse_frequencies(&l.unwrap())))?;
     Ok(answer)
 }
 
-pub(crate) fn part2() -> ::std::result::Result<i32, Error> {
+fn part2() -> ::std::result::Result<i32, Error> {
     use crate::input;
 
     let answer = repeated_frequency(input(1)?.lines().map(|l| parse_frequencies(&l.unwrap())))?;

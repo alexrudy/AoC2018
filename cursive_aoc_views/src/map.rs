@@ -87,7 +87,6 @@ impl<T> OneReceiver<T> {
         } else {
             false
         }
-
     }
 
     pub fn get(&self) -> Option<&T> {

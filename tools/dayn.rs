@@ -1,8 +1,6 @@
-use std::error::Error;
+use failure::Error;
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
-
-pub(crate) fn main() -> Result<()> {
+pub(crate) fn main() -> Result<(), Error> {
     Ok(())
 }
 

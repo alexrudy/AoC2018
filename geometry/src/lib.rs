@@ -6,6 +6,7 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use failure::Fail;
+use itertools::iproduct;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -91,6 +92,12 @@ impl Point {
         Direction::all().map(move |d| self.step(d))
     }
 
+    pub fn adjacent_diagonal(self) -> impl Iterator<Item = Self> {
+        iproduct!(-1..2, -1..2)
+            .filter(|(x, y)| !(*x == 0 && *y == 0))
+            .map(move |(x, y)| Point::new(self.x + x, self.y + y))
+    }
+
     pub fn manhattan_distance(self, other: Point) -> Position {
         (self.x - other.x).abs() + (self.y - other.y).abs()
     }
@@ -170,6 +177,15 @@ impl BoundingBox {
             right: 0,
             top: 0,
             bottom: 0,
+        }
+    }
+
+    pub fn new(left: Position, right: Position, top: Position, bottom: Position) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
         }
     }
 
@@ -345,6 +361,30 @@ mod tests {
         assert_eq!(point.step(Direction::Right), Point::new(2, 1));
 
         assert_eq!(&point.to_string(), "1,1");
+
+        assert_eq!(
+            point.adjacent().collect::<Vec<_>>(),
+            vec![
+                Point::new(1, 0),
+                Point::new(0, 1),
+                Point::new(2, 1),
+                Point::new(1, 2)
+            ]
+        );
+
+        assert_eq!(
+            point.adjacent_diagonal().collect::<Vec<_>>(),
+            vec![
+                Point::new(0, 0),
+                Point::new(0, 1),
+                Point::new(0, 2),
+                Point::new(1, 0),
+                Point::new(1, 2),
+                Point::new(2, 0),
+                Point::new(2, 1),
+                Point::new(2, 2)
+            ]
+        );
     }
 
     #[test]
