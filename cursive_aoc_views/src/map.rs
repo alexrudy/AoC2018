@@ -24,6 +24,12 @@ pub struct Offset {
     pub top: isize,
 }
 
+impl Default for Offset {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Offset {
     pub fn new() -> Self {
         Self { left: 0, top: 0 }
