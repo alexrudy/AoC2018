@@ -1,0 +1,47 @@
+[17] c = c + 2
+[  ] c = c * c
+[  ] c = 19 * c
+[  ] c = c * 11
+[  ] b = b + 2
+[  ] b = b * 22
+[  ] b = b + 7
+[  ] c = c + b
+[  ] jump 26 + a
+[26] jump 1
+[01] d = 1
+[02] f = 1
+[03] b = d * f
+[  ] b = b == c
+[  ] jump b + 6
+[06] jump 8
+[07] a = d + a
+[08] f = f + 1
+[  ] b = f > c
+[  ] jump 11 + b
+[11] jump 3
+[12] d = d + 1
+[  ] b = d > c
+[  ] jump b + 15
+[15] jump 2
+[16] jump 257
+[27] b = 27
+[28] b = b * 28
+[29] b = 29 + b
+[30] b = 30 * b
+[31] b = b * 14
+[32] b = b * 32
+[33] c = c + b
+[34] a = 0
+[35] jump 1
+
+[26] jump 1
+[35] jump 1
+[15] jump 2
+[11] jump 3
+[05] jump b + 6
+[06] jump 8
+[10] jump 11 + b
+[14] jump b + 15
+[00] jump 17
+[25] jump 26 + a
+[16] jump 257
