@@ -10,6 +10,7 @@ pub(crate) struct RepeatedElementResult<T> {
 }
 
 impl<T> RepeatedElementResult<T> {
+    #[allow(dead_code)]
     pub(crate) fn first(&self) -> &T {
         &self.first
     }
