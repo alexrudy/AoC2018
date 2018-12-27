@@ -189,17 +189,24 @@ impl BoundingBox {
         }
     }
 
+    pub fn from_corners(topleft: Point, bottomright: Point) -> Self {
+        Self {
+            left: cmp::min(topleft.x, bottomright.x),
+            right: cmp::max(topleft.x, bottomright.x),
+            top: cmp::min(topleft.y, bottomright.y),
+            bottom: cmp::max(topleft.y, bottomright.y),
+        }
+    }
+
     pub fn include(&mut self, point: Point) {
         if point.x < self.left {
             self.left = point.x;
-        }
-        if point.x > self.right {
+        } else if point.x > self.right {
             self.right = point.x;
         }
         if point.y < self.top {
             self.top = point.y;
-        }
-        if point.y > self.bottom {
+        } else if point.y > self.bottom {
             self.bottom = point.y;
         }
     }
