@@ -1,12 +1,13 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
-use std::hash::Hash;
 use std::mem;
 use std::str::FromStr;
 
-use failure::{Error, Fail};
+use failure::{format_err, Error, Fail};
 
 use geometry::{BoundingBox, Point};
+
+use crate::iterhelper::repeated_element;
 
 pub(crate) fn main() -> Result<(), Error> {
     use crate::input_to_string;
@@ -18,47 +19,22 @@ pub(crate) fn main() -> Result<(), Error> {
         la.clone().evolve().nth(10).unwrap().resource_value()
     );
 
-    println!("Part 2: {}", part2(la));
+    println!("Part 2: {}", part2(la)?);
 
     Ok(())
 }
 
-fn part2(lumber: LumberArea) -> usize {
+fn part2(lumber: LumberArea) -> Result<usize, Error> {
     let target = 1_000_000_000;
-    let pattern = repeated_pattern(lumber.clone().evolve().map(|l| l.to_string()));
-    let offset = (target - pattern.start) % pattern.length;
-    lumber
+    let pattern = repeated_element(lumber.clone().evolve().map(|l| l.to_string()))
+        .ok_or_else(|| format_err!("No pattern found."))?;
+    let offset = (target - pattern.start()) % pattern.length();
+    Ok(lumber
         .evolve()
-        .skip(pattern.start)
+        .skip(pattern.start())
         .nth(offset)
         .unwrap()
-        .resource_value()
-}
-
-#[derive(Debug)]
-struct RepeatedPatternResult<T> {
-    first: T,
-    length: usize,
-    start: usize,
-}
-
-fn repeated_pattern<I, T>(iter: I) -> RepeatedPatternResult<T>
-where
-    I: Iterator<Item = T>,
-    T: Hash + Eq + Ord + Clone,
-{
-    let mut seen = HashMap::new();
-
-    for (i, item) in iter.enumerate() {
-        if let Some(s) = seen.insert(item.clone(), i) {
-            return RepeatedPatternResult {
-                first: item,
-                length: i - s,
-                start: s,
-            };
-        }
-    }
-    unreachable!();
+        .resource_value())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash)]

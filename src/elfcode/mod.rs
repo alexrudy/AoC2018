@@ -8,9 +8,10 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub(crate) mod decompile;
+// pub(crate) mod decompile;
+pub(crate) mod psuedocoder;
 
-pub(crate) type Value = i32;
+pub(crate) type Value = i64;
 
 #[derive(Debug, Fail)]
 pub(crate) enum RegisterError {
@@ -27,7 +28,7 @@ impl From<TryFromIntError> for RegisterError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Register {
     memory: Vec<Value>,
 }
@@ -48,7 +49,7 @@ impl Register {
     }
 
     pub(crate) fn store(&mut self, address: Value, value: Value) -> Result<(), RegisterError> {
-        if address < 0 || address > self.memory.len() as i32 {
+        if address < 0 || address > self.memory.len() as Value {
             return Err(RegisterError::InvalidAddress(address));
         }
 
@@ -57,7 +58,7 @@ impl Register {
     }
 
     pub(crate) fn get(&self, address: Value) -> Result<Value, RegisterError> {
-        if address < 0 || address > self.memory.len() as i32 {
+        if address < 0 || address > self.memory.len() as Value {
             return Err(RegisterError::InvalidAddress(address));
         }
         Ok(self.memory[address as usize])
@@ -351,8 +352,14 @@ impl Processor {
         }
     }
 
+    pub(crate) fn ip(&self) -> Result<usize, ProgramError> {
+        Ok(usize::try_from(
+            self.register.get(self.instruction_pointer)?,
+        )?)
+    }
+
     pub(crate) fn step(&mut self) -> Result<(), ProgramError> {
-        let ip = usize::try_from(self.register.get(self.instruction_pointer)?)?;
+        let ip = self.ip()?;
 
         if ip >= self.commands.len() {
             return Err(ProgramError::Halted);
@@ -370,6 +377,13 @@ impl Processor {
     pub(crate) fn run(&mut self) -> Process {
         Process { processor: self }
     }
+
+    pub(crate) fn monitor_instruction(&mut self, instruction: usize) -> InstructionMonitor {
+        InstructionMonitor {
+            processor: self,
+            target_pointer: instruction,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -385,6 +399,31 @@ impl<'p> Iterator for Process<'p> {
             return None;
         }
         Some(self.processor.register.clone())
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct InstructionMonitor<'p> {
+    processor: &'p mut Processor,
+    target_pointer: usize,
+}
+
+impl<'p> Iterator for InstructionMonitor<'p> {
+    type Item = Register;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Ok(ip) = self.processor.ip() {
+                if self.processor.step().is_err() {
+                    return None;
+                }
+                if ip == self.target_pointer {
+                    return Some(self.processor.register.clone());
+                }
+            } else {
+                return None;
+            }
+        }
     }
 }
 

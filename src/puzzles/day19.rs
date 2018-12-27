@@ -1,7 +1,7 @@
 use failure::{format_err, Error};
 use std::io::prelude::*;
 
-use crate::elfcode::decompile::decompile;
+use crate::elfcode::psuedocoder::decompile;
 use crate::elfcode::{Instruction, InstructionPointer, Processor};
 
 pub(crate) fn main() -> Result<(), Error> {
@@ -31,7 +31,7 @@ pub(crate) fn main() -> Result<(), Error> {
 
     println!("Part 1: {}", r.get(0)?);
 
-    eprintln!("{}", decompile(program, ip.into()));
+    eprintln!("{}", decompile(&program, ip.into()));
 
     Ok(())
 }

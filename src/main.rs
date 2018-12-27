@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 mod elfcode;
+pub(crate) mod iterhelper;
 mod puzzles;
 
 const USAGE: &str = "
@@ -77,6 +78,7 @@ fn main() -> Result<(), Error> {
         day!(day18),
         day!(day19),
         day!(day20),
+        day!(day21),
     ];
 
     if args.arg_day > solvers.len() || args.arg_day < 1 {
