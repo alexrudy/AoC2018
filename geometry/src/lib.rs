@@ -201,12 +201,14 @@ impl BoundingBox {
     pub fn include(&mut self, point: Point) {
         if point.x < self.left {
             self.left = point.x;
-        } else if point.x > self.right {
+        }
+        if point.x > self.right {
             self.right = point.x;
         }
         if point.y < self.top {
             self.top = point.y;
-        } else if point.y > self.bottom {
+        } 
+        if point.y > self.bottom {
             self.bottom = point.y;
         }
     }
